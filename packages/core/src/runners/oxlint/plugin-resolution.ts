@@ -21,6 +21,11 @@ interface ResolvedYouMightNotNeedEffectPlugin {
   availableRuleNames: ReadonlySet<string>;
 }
 
+interface ResolvedItallReactPlugin {
+  entry: JsPluginEntry;
+  availableRuleNames: ReadonlySet<string>;
+}
+
 interface MaybePluginModule {
   rules?: Record<string, unknown>;
   default?: { rules?: Record<string, unknown> };
@@ -81,6 +86,37 @@ export const resolveYouMightNotNeedEffectPlugin = (
   }
   return {
     entry: { name: YOU_MIGHT_NOT_NEED_EFFECT_NAMESPACE, specifier: pluginSpecifier },
+    availableRuleNames: readPluginRuleNames(pluginSpecifier),
+  };
+};
+
+// Namespace under which the itall team's sidecar ESLint plugin is
+// loaded. Rule keys flow through oxlint's config as `itall/<rule>`.
+// The plugin is opt-in: when @it-all-service/eslint-plugin-itall-react
+// is not installed in the consumer, the resolver silently returns null
+// and our rule set drops out of the lint config.
+export const ITALL_REACT_NAMESPACE = "itall";
+
+// Rule keys (namespaced under `itall/`) the CLI will enable when the
+// itall sidecar plugin is present. Rules land here once they are
+// implemented in the sidecar package and wired through
+// `filterRulesToAvailable`.
+export const ITALL_REACT_RULES: Record<string, OxlintRuleSeverity> = {
+  "itall/rerender-use-ref-transient-values": "warn",
+};
+
+export const resolveItallReactPlugin = (
+  customRulesOnly: boolean,
+): ResolvedItallReactPlugin | null => {
+  if (customRulesOnly) return null;
+  let pluginSpecifier: string;
+  try {
+    pluginSpecifier = esmRequire.resolve("@it-all-service/eslint-plugin-itall-react");
+  } catch {
+    return null;
+  }
+  return {
+    entry: { name: ITALL_REACT_NAMESPACE, specifier: pluginSpecifier },
     availableRuleNames: readPluginRuleNames(pluginSpecifier),
   };
 };
