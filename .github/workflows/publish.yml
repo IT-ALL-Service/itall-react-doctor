@@ -33,7 +33,7 @@ jobs:
       - name: Publish @it-all-service/react-doctor
         working-directory: packages/react-doctor
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ "${{ inputs.dry-run }}" = "true" ]; then
             pnpm publish --no-git-checks --dry-run
