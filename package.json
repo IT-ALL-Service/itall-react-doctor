@@ -1,19 +1,19 @@
 {
-  "name": "react-doctor",
+  "name": "itall-react-doctor",
   "private": true,
-  "homepage": "https://github.com/millionco/react-doctor#readme",
+  "homepage": "https://github.com/IT-ALL-Service/itall-react-doctor#readme",
   "bugs": {
-    "url": "https://github.com/millionco/react-doctor/issues"
+    "url": "https://github.com/IT-ALL-Service/itall-react-doctor/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/millionco/react-doctor.git"
+    "url": "https://github.com/IT-ALL-Service/itall-react-doctor.git"
   },
   "type": "module",
   "scripts": {
-    "dev": "turbo run dev --filter=react-doctor",
+    "dev": "turbo run dev --filter=@it-all-service/react-doctor",
     "build": "turbo run build",
-    "test": "turbo run test --filter=react-doctor",
+    "test": "turbo run test --filter=@it-all-service/react-doctor",
     "typecheck": "turbo run typecheck",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
