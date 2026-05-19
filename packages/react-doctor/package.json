@@ -27,10 +27,6 @@
     "url": "https://github.com/IT-ALL-Service/itall-react-doctor.git",
     "directory": "packages/react-doctor"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
-  },
   "bin": {
     "react-doctor": "./bin/react-doctor.js"
   },
@@ -51,6 +47,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "dev": "vp pack --watch",
