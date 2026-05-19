@@ -3,7 +3,12 @@
   "changelog": ["@changesets/changelog-github", { "repo": "IT-ALL-Service/itall-react-doctor" }],
   "commit": false,
   "fixed": [
-    ["@it-all-service/react-doctor", "eslint-plugin-react-doctor", "oxlint-plugin-react-doctor"]
+    [
+      "@it-all-service/react-doctor",
+      "@it-all-service/eslint-plugin-itall-react",
+      "eslint-plugin-react-doctor",
+      "oxlint-plugin-react-doctor"
+    ]
   ],
   "linked": [],
   "access": "public",

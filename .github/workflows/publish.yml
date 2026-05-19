@@ -30,6 +30,19 @@ jobs:
 
       - run: pnpm build
 
+      # Publish the sidecar ESLint plugin first so the CLI's optional
+      # peer dep resolves cleanly when consumers install both packages.
+      - name: Publish @it-all-service/eslint-plugin-itall-react
+        working-directory: packages/eslint-plugin-itall-react
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ "${{ inputs.dry-run }}" = "true" ]; then
+            pnpm publish --no-git-checks --dry-run
+          else
+            pnpm publish --no-git-checks
+          fi
+
       - name: Publish @it-all-service/react-doctor
         working-directory: packages/react-doctor
         env:
