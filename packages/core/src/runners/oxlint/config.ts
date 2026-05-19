@@ -11,6 +11,9 @@ import { resolveRuleSeverityOverride } from "../../resolve-rule-severity-overrid
 import { buildCapabilities, shouldEnableRule } from "./capabilities.js";
 import {
   filterRulesToAvailable,
+  ITALL_REACT_NAMESPACE,
+  ITALL_REACT_RULES,
+  resolveItallReactPlugin,
   resolveReactHooksJsPlugin,
   resolveYouMightNotNeedEffectPlugin,
   YOU_MIGHT_NOT_NEED_EFFECT_NAMESPACE,
@@ -59,9 +62,19 @@ export const createOxlintConfig = ({
       )
     : {};
 
+  const itallReactPlugin = resolveItallReactPlugin(customRulesOnly);
+  const itallReactRules = itallReactPlugin
+    ? filterRulesToAvailable(
+        ITALL_REACT_RULES,
+        ITALL_REACT_NAMESPACE,
+        itallReactPlugin.availableRuleNames,
+      )
+    : {};
+
   const jsPlugins: JsPluginEntry[] = [];
   if (reactHooksJsPlugin) jsPlugins.push(reactHooksJsPlugin.entry);
   if (youMightNotNeedEffectPlugin) jsPlugins.push(youMightNotNeedEffectPlugin.entry);
+  if (itallReactPlugin) jsPlugins.push(itallReactPlugin.entry);
 
   const capabilities = buildCapabilities(project);
 
@@ -112,6 +125,7 @@ export const createOxlintConfig = ({
       ...(customRulesOnly ? {} : BUILTIN_A11Y_RULES),
       ...reactCompilerRules,
       ...youMightNotNeedEffectRules,
+      ...itallReactRules,
       ...enabledReactDoctorRules,
     },
   };
