@@ -1,9 +1,13 @@
-name: "itall react-doctor PR comment"
+name: "itall react-doctor"
 description: |
   Run `@it-all-service/react-doctor` against a consumer repo and post the
   findings as a sticky comment on the triggering pull request. The comment
   is identified by the marker `<!-- itall-react-doctor -->` so subsequent
   runs update the same comment instead of stacking new ones.
+
+  Pin via the moving `@v0` tag (published by `.github/workflows/publish.yml`
+  on every v0.x release) so the consumer workflow doesn't need editing on
+  each new release.
 branding:
   icon: "activity"
   color: "blue"

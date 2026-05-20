@@ -248,7 +248,7 @@ Vercel react-best-practices 외에 itall 자체 컨벤션이 [`IT-ALL-Service/pa
 2. **PR 리뷰 라벨 수집** (예상 1~2h) — GitHub Actions로 PR comment에 reviewer가 `react-doctor-false-positive` 라벨을 달면 별도 channel에 알림. 정성 데이터지만 가장 정확한 신호
 3. **A/B (severity 토글)** — 같은 코드베이스에서 룰을 `off`로 토글한 진단 수 vs `warn` 진단 수 비교. 한 번 실행만 필요
 
-`v0.5.0` 출시 후 사내 컨슈머가 1~2개 도입되면 그때 우선순위 1번부터 시작 권장. 그 전에는 PR comment(`.github/actions/pr-comment`)와 PR 리뷰에서 정성 피드백을 수집.
+`v0.5.0` 출시 후 사내 컨슈머가 1~2개 도입되면 그때 우선순위 1번부터 시작 권장. 그 전에는 PR comment action(repo root `action.yml`, 컨슈머는 `uses: IT-ALL-Service/itall-react-doctor@v0`로 호출)과 PR 리뷰에서 정성 피드백을 수집.
 
 ---
 
