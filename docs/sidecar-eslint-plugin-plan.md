@@ -30,7 +30,62 @@ react-doctor 점수는 모든 진단의 합으로 계산된다. 같은 anti-patt
 | 4   | `itall/server-parallel-nested-fetching`      | ✅ **구현 완료** (v0.5.0)                                                                                            | `Promise.all(...map())` 두 단 sequential 변수 추적  |
 | 5   | `itall/async-api-routes`                     | ❌ **의도적 미구현** — upstream `react-doctor/server-sequential-independent-await`(+3개부터 `async-parallel`)와 겹침 | 결정 근거는 위 "겹침 정책" · §3-룰5 데시전 레코드   |
 
-PoC 4개 룰 구현 완료 + 1개 미구현 확정. 다음 우선순위는 lintability MEDIUM 카테고리 또는 운영 관측 결과를 보고 `warn`→`error` 승격 검토. 각 룰의 spec/AST 알고리즘은 §3에 보존.
+PoC 4개 룰 구현 완료 + 1개 미구현 확정. 추가 후보 룰 발굴은 §0-1 "GAP 재검토 결과(2026-05-20)"에 정리되어 사실상 종료됨. 다음 우선순위는 운영 관측 결과를 보고 `warn`→`error` 승격 검토.
+
+---
+
+## 0-1. GAP 재검토 결과 (2026-05-20)
+
+`v0.5.0` 출시 직전에 "lintability MEDIUM 7개"에 진짜 가성비 있는 룰이 있는지 재검토한 라운드. Vercel 70개 룰을 GitHub API로 직접 enumerate해서 upstream과 이름·의미 양쪽으로 매칭하고, MEDIUM 후보 7개의 prose를 batch 독파했다.
+
+**결과: 추가로 구현 가능한 mechanical 룰은 0개.** PoC HIGH 5개는 처리 완료(4구현+1미구현), 나머지 MEDIUM/LOW는 아래 세 그룹 중 하나에 해당.
+
+### 그룹 A — 🔴 prose-only (lint 불가)
+
+"X API를 써라"라는 missing-call 패턴이라 false positive 폭발. lint 신호로 변환 불가.
+
+- `rendering-resource-hints` — `prefetchDNS`/`preconnect`/`preload` 사용 권고
+- `rendering-activity` — 토글되는 expensive 컴포넌트에 React 19 `<Activity>` 사용
+- `rendering-content-visibility` — long list에 CSS `content-visibility:auto`
+- `rendering-svg-precision`, `client-swr-dedup`, `async-suspense-boundaries`, `js-request-idle-callback`, `bundle-defer-third-party`, `bundle-dynamic-imports` (전체 prose 형태)
+
+### 그룹 B — ❌ upstream 겹침 (겹침 정책에 따라 드롭)
+
+이름 변형 또는 같은 anti-pattern을 upstream이 이미 잡음. 추가하면 점수 이중 차감.
+
+| Vercel                               | upstream                                                        |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `async-api-routes`                   | `server-sequential-independent-await` (이미 §3-룰5에 결정 기록) |
+| `advanced-use-latest`                | `prefer-use-effect-event` (recommendation 텍스트 동일)          |
+| `rerender-defer-reads`               | `rerender-defer-reads-hook`                                     |
+| `advanced-effect-event-deps`         | `no-effect-event-in-deps`                                       |
+| `bundle-analyzable-paths`            | `no-dynamic-import-path`                                        |
+| `bundle-barrel-imports`              | `no-barrel-import`                                              |
+| `client-event-listeners`             | `effect-needs-cleanup`                                          |
+| `client-localstorage-schema`         | `client-localstorage-no-version`                                |
+| `rerender-derived-state(-no-effect)` | `no-derived-state-effect` · `rerender-derived-state-from-hook`  |
+| `rerender-simple-expression-in-memo` | `no-usememo-simple-expression`                                  |
+| `rerender-move-effect-to-event`      | `no-effect-event-handler`                                       |
+| `rerender-no-inline-components`      | `no-nested-component-definition`                                |
+| `server-no-shared-module-state`      | `server-no-mutable-module-state`                                |
+| `server-parallel-fetching`           | `server-sequential-independent-await`                           |
+| `advanced-init-once` (부분)          | `rerender-lazy-state-init`                                      |
+| `server-cache-react` (부분)          | `server-cache-with-object-literal`                              |
+
+### 그룹 C — 🟡 MEDIUM (가능하지만 ROI 낮음)
+
+cross-file 분석이나 휴리스틱이 필요해 false positive 위험 큼.
+
+- `server-serialization` — RSC → Client prop 필드 사용량 추적. cross-file 정적 분석 필요. 🟡 MEDIUM/HIGH 난이도, 4~8h.
+- `bundle-conditional` — feature flag 패턴 + 큰 모듈 정적 import 검출. 휴리스틱 필요. 🟡 MEDIUM.
+- `rerender-split-combined-hooks` — useMemo/useEffect 안의 독립 작업 분리. dep usage 그래프 추적. 🟡 MEDIUM.
+
+### 결론
+
+새 룰을 발굴할 거리는 사실상 끝. 추가 작업은:
+
+1. **운영 관측을 통한 후속 결정** — `v0.5.0` 출시 후 컨슈머 프로젝트에서 false positive 데이터를 모은다. 데이터가 쌓이면 그룹 C 중 하나를 ROI 기반으로 재평가.
+2. **upstream 업데이트 모니터링** — upstream `oxlint-plugin-react-doctor`가 새 룰을 추가하거나 기존 룰의 범위가 변하면 우리 사이드카 4개 룰의 겹침 가능성을 재검증.
 
 ---
 
