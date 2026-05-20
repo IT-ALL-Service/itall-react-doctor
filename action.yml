@@ -58,6 +58,17 @@ inputs:
       explicit semver). Pin to a tag (`v0.5.0`) in production; `latest` is
       fine for trying out the action.
     default: "latest"
+  npm-auth-token:
+    description: |
+      Optional Personal Access Token (read:packages, SSO-authorized for
+      IT-ALL-Service) used to install @it-all-service packages from
+      GitHub Packages. npm.pkg.github.com sometimes rejects the default
+      workflow token even with packages:read permission + repo on the
+      package access list — only PATs reliably authenticate in those
+      cases. Leave empty to fall back to github.token; pass
+      `secrets.IT_ALL_NPM_TOKEN` (or similar) for the reliable path.
+    required: false
+    default: ""
 
 outputs:
   score:
@@ -103,7 +114,10 @@ runs:
         # `npm.pkg.github.com`, which is why we use `github.token`
         # here instead of `inputs.github-token` — the App token is
         # still used downstream for the PR comment step.
-        NODE_AUTH_TOKEN: ${{ github.token }}
+        # Prefer the optional PAT (`npm-auth-token`) when supplied —
+        # observed cases where org-internal `github.token` returns 401
+        # despite packages:read + repo on the access list.
+        NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         NO_COLOR: "1"
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_PROJECT: ${{ inputs.project }}
@@ -150,10 +164,9 @@ runs:
       if: always()
       shell: bash
       env:
-        # See the Run step above for why `github.token` powers npm
-        # registry auth here (App tokens can't authenticate against
-        # `npm.pkg.github.com`).
-        NODE_AUTH_TOKEN: ${{ github.token }}
+        # Same precedence as the Run step: prefer optional PAT, fall
+        # back to github.token. See the Run step comment for context.
+        NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_OFFLINE: ${{ inputs.offline }}
         INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
