@@ -92,24 +92,30 @@ runs:
     # token returns 200). Writing the resolved token into `~/.npmrc`
     # bypasses the placeholder path and authenticates every package
     # manager (npm/pnpm/yarn) that reads user-level npmrc.
-    - name: Configure GitHub Packages auth
+    # setup-node@v4 writes `_authToken=${NODE_AUTH_TOKEN}` as a literal
+    # placeholder into $NPM_CONFIG_USERCONFIG. npm's env expansion of
+    # that placeholder is unreliable in composite-action contexts
+    # (registry-probe 200 with the same token vs npm 401 in the same
+    # step). Replace the placeholder with the resolved token in place
+    # so npm sees the real value without any env-time expansion.
+    - name: Resolve GitHub Packages auth token in setup-node .npmrc
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
-        NPM_AUTH_INPUT: ${{ inputs.npm-auth-token }}
       run: |
-        # TODO(debug): NODE_AUTH_TOKEN resolution 추적용. 안정화되면 제거.
-        echo "::group::token-debug"
-        echo "input-len=${#NPM_AUTH_INPUT}"
-        echo "resolved-len=${#NODE_AUTH_TOKEN}"
-        echo "resolved-prefix=${NODE_AUTH_TOKEN:0:4}"
-        curl -s -o /dev/null -w "registry-probe: HTTP %{http_code}\n" \
-          -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
-          https://npm.pkg.github.com/@it-all-service/react-doctor
-        echo "::endgroup::"
-        echo "@it-all-service:registry=https://npm.pkg.github.com" >> "$HOME/.npmrc"
-        echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"
-        echo "always-auth=true" >> "$HOME/.npmrc"
+        : "${NPM_CONFIG_USERCONFIG:?setup-node did not export NPM_CONFIG_USERCONFIG}"
+        if grep -Fq '${NODE_AUTH_TOKEN}' "$NPM_CONFIG_USERCONFIG"; then
+          # Use a sed delimiter that won't collide with the token chars.
+          sed -i "s|\${NODE_AUTH_TOKEN}|$NODE_AUTH_TOKEN|g" "$NPM_CONFIG_USERCONFIG"
+        fi
+        # Belt-and-suspenders: also write the same auth into the user-
+        # level npmrc, so a package manager that ignores
+        # NPM_CONFIG_USERCONFIG still gets credentials.
+        {
+          echo "@it-all-service:registry=https://npm.pkg.github.com"
+          echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN"
+          echo "always-auth=true"
+        } >> "$HOME/.npmrc"
 
     # diff mode preparation — when triggered by a pull_request event,
     # ensure the base ref is fetched locally so the CLI's diff resolver
