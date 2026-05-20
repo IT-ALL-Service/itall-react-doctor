@@ -78,44 +78,29 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # setup-node placeholder의 env expand가 composite-action context
+    # 에서 안 되는 문제(같은 step에서 curl 200 / npm 401)를 피하려고
+    # registry-url/scope 옵션은 사용하지 않는다. setup-node는 그저
+    # node binary만 깔고, .npmrc는 우리가 직접 쓴다.
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
-        registry-url: "https://npm.pkg.github.com"
-        scope: "@it-all-service"
 
-    # Direct ~/.npmrc write — setup-node@v4 already places an .npmrc at
-    # `$RUNNER_TEMP/.npmrc` with `_authToken=${NODE_AUTH_TOKEN}`, but
-    # the env-variable expansion is not reliable when npm CLI is
-    # invoked via `npx -y` from inside a composite action (observed
-    # 401 against `npm.pkg.github.com` even though curl with the same
-    # token returns 200). Writing the resolved token into `~/.npmrc`
-    # bypasses the placeholder path and authenticates every package
-    # manager (npm/pnpm/yarn) that reads user-level npmrc.
-    # setup-node@v4 writes `_authToken=${NODE_AUTH_TOKEN}` as a literal
-    # placeholder into $NPM_CONFIG_USERCONFIG. npm's env expansion of
-    # that placeholder is unreliable in composite-action contexts
-    # (registry-probe 200 with the same token vs npm 401 in the same
-    # step). Replace the placeholder with the resolved token in place
-    # so npm sees the real value without any env-time expansion.
-    - name: Resolve GitHub Packages auth token in setup-node .npmrc
+    # Resolved token을 그대로 .npmrc에 박는다. 그리고
+    # NPM_CONFIG_USERCONFIG를 명시적으로 이 파일로 가리켜서 npm/pnpm/
+    # yarn 어떤 manager가 와도 같은 user config를 보게 한다.
+    - name: Configure GitHub Packages auth
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
       run: |
-        : "${NPM_CONFIG_USERCONFIG:?setup-node did not export NPM_CONFIG_USERCONFIG}"
-        if grep -Fq '${NODE_AUTH_TOKEN}' "$NPM_CONFIG_USERCONFIG"; then
-          # Use a sed delimiter that won't collide with the token chars.
-          sed -i "s|\${NODE_AUTH_TOKEN}|$NODE_AUTH_TOKEN|g" "$NPM_CONFIG_USERCONFIG"
-        fi
-        # Belt-and-suspenders: also write the same auth into the user-
-        # level npmrc, so a package manager that ignores
-        # NPM_CONFIG_USERCONFIG still gets credentials.
+        NPMRC_FILE="$HOME/.npmrc"
         {
           echo "@it-all-service:registry=https://npm.pkg.github.com"
           echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN"
           echo "always-auth=true"
-        } >> "$HOME/.npmrc"
+        } > "$NPMRC_FILE"
+        echo "NPM_CONFIG_USERCONFIG=$NPMRC_FILE" >> "$GITHUB_ENV"
 
     # diff mode preparation — when triggered by a pull_request event,
     # ensure the base ref is fetched locally so the CLI's diff resolver
