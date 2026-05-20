@@ -94,13 +94,21 @@ runs:
       env:
         NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
       run: |
-        NPMRC_FILE="$HOME/.npmrc"
-        {
-          echo "@it-all-service:registry=https://npm.pkg.github.com"
-          echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN"
-          echo "always-auth=true"
-        } > "$NPMRC_FILE"
-        echo "NPM_CONFIG_USERCONFIG=$NPMRC_FILE" >> "$GITHUB_ENV"
+        # npm config set으로 직접 user config에 박는다 — 모든 placeholder
+        # 우회. 다음 step에서 npx가 즉시 이 config 사용.
+        npm config set @it-all-service:registry=https://npm.pkg.github.com
+        npm config set //npm.pkg.github.com/:_authToken="$NODE_AUTH_TOKEN"
+        npm config set always-auth=true
+        echo "::group::npm-config-verify"
+        echo "user config path: $(npm config get userconfig)"
+        # registry/scope set 확인 (token은 출력 안 함)
+        npm config get @it-all-service:registry
+        npm config get always-auth
+        # 자기 자신을 토큰으로 인증해서 200/401 즉시 검증
+        curl -s -o /dev/null -w "registry-probe: HTTP %{http_code}\n" \
+          -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+          https://npm.pkg.github.com/@it-all-service/react-doctor
+        echo "::endgroup::"
 
     # diff mode preparation — when triggered by a pull_request event,
     # ensure the base ref is fetched locally so the CLI's diff resolver
