@@ -8,15 +8,16 @@
 
 ## 현재 진척 (한눈에)
 
-| # | 룰 | 상태 | 비고 |
-|---|---|---|---|
-| 1 | `itall/rerender-use-ref-transient-values` | ✅ **구현 완료** (v0.3.0, identifier resolution은 v0.4.0) | 인라인 핸들러 + 같은 파일의 함수 정의 추적 |
-| 2 | `itall/async-cheap-condition-before-await` | ⏳ 남음 | LogicalExpression(`&&`) 분석 |
-| 3 | `itall/rendering-hydration-suppress-warning` | ✅ **구현 완료** (v0.4.0) | new Date/Math.random/Intl 등 + JSXElement 조상 스택 |
-| 4 | `itall/server-parallel-nested-fetching` | ⏳ 남음 | `Promise.all(...map())` 두 단 sequential 변수 추적 |
-| 5 | `itall/async-api-routes` | ⏳ 남음 | route.ts HTTP method export 안의 독립 await 검출 |
+| #   | 룰                                           | 상태                                                      | 비고                                                |
+| --- | -------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------- |
+| 1   | `itall/rerender-use-ref-transient-values`    | ✅ **구현 완료** (v0.3.0, identifier resolution은 v0.4.0) | 인라인 핸들러 + 같은 파일의 함수 정의 추적          |
+| 2   | `itall/async-cheap-condition-before-await`   | ⏳ 남음                                                   | LogicalExpression(`&&`) 분석                        |
+| 3   | `itall/rendering-hydration-suppress-warning` | ✅ **구현 완료** (v0.4.0)                                 | new Date/Math.random/Intl 등 + JSXElement 조상 스택 |
+| 4   | `itall/server-parallel-nested-fetching`      | ⏳ 남음                                                   | `Promise.all(...map())` 두 단 sequential 변수 추적  |
+| 5   | `itall/async-api-routes`                     | ⏳ 남음                                                   | route.ts HTTP method export 안의 독립 await 검출    |
 
 **남은 우선순위:**
+
 1. **#3 `async-cheap-condition-before-await`** — 가장 단순. `LogicalExpression(&&)` 패턴 직접 매칭, scope 분석 거의 없음.
 2. **#4 `server-parallel-nested-fetching`** — 중간. 변수 1개만 추적하면 됨.
 3. **#5 `async-api-routes`** — 가장 복잡. 파일 경로 인식 + 의존성 분석 필요.
