@@ -14,6 +14,7 @@ export interface ItallReactRuleMetadata {
 export const ITALL_REACT_RULE_METADATA: Record<string, ItallReactRuleMetadata> = {
   "itall/async-cheap-condition-before-await": { defaultSeverity: "warn", requires: [], tags: [] },
   "itall/rendering-hydration-suppress-warning": { defaultSeverity: "warn", requires: [], tags: [] },
+  "itall/rerender-split-combined-hooks": { defaultSeverity: "warn", requires: [], tags: [] },
   "itall/rerender-use-ref-transient-values": { defaultSeverity: "warn", requires: [], tags: [] },
   "itall/server-parallel-nested-fetching": {
     defaultSeverity: "warn",

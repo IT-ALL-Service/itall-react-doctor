@@ -103,4 +103,22 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     expect(definition).toBeDefined();
     expect(definition?.tags ?? []).toContain("test-noise");
   });
+
+  it("registers the rerender-split-combined-hooks rule", () => {
+    const rule = plugin.rules["rerender-split-combined-hooks"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.type).toBe("problem");
+    expect(rule.meta.docs.recommended).toBe(true);
+    expect(rule.meta.docs.description).toContain("useMemo");
+    expect(typeof rule.create).toBe("function");
+  });
+
+  it("rerender-split-combined-hooks visitor covers CallExpression", () => {
+    const rule = plugin.rules["rerender-split-combined-hooks"];
+    const visitor = rule.create({
+      report: () => {},
+      getFilename: () => "test.tsx",
+    });
+    expect(typeof visitor.CallExpression).toBe("function");
+  });
 });

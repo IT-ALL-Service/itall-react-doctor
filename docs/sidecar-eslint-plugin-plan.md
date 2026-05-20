@@ -76,16 +76,16 @@ PoC 4개 룰 구현 완료 + 1개 미구현 확정. 추가 후보 룰 발굴은 
 
 cross-file 분석이나 휴리스틱이 필요해 false positive 위험 큼.
 
-- `server-serialization` — RSC → Client prop 필드 사용량 추적. cross-file 정적 분석 필요. 🟡 MEDIUM/HIGH 난이도, 4~8h.
-- `bundle-conditional` — feature flag 패턴 + 큰 모듈 정적 import 검출. 휴리스틱 필요. 🟡 MEDIUM.
-- `rerender-split-combined-hooks` — useMemo/useEffect 안의 독립 작업 분리. dep usage 그래프 추적. 🟡 MEDIUM.
+- ~~`rerender-split-combined-hooks`~~ ✅ **구현됨 (useMemo 케이스만, 2026-05-20)** — 인프라(capability/tag) 깔린 이후 보수적 한정 버전으로 도입. body 안 `const X = ...` 2개 이상이 dep array의 disjoint subset만 참조할 때만 발화. `useEffect` 케이스는 side-effect 순서·cleanup 위험으로 skip. §3-룰6 데시전 레코드 참고.
+- `server-serialization` — RSC → Client prop 필드 사용량 추적. cross-file 정적 분석 필요. 🟡 MEDIUM/HIGH 난이도, 4~8h. **여전히 미도입** — 단일 파일 분석으로는 의미 있는 신호를 추출 못 함 (callee가 다른 파일).
+- `bundle-conditional` — feature flag 패턴 + 큰 모듈 정적 import 검출. 휴리스틱 필요. 🟡 MEDIUM. **여전히 미도입** — "heavy 모듈"이라는 mechanical 신호가 없어서 false positive 폭발 우려.
 
 ### 결론
 
-새 룰을 발굴할 거리는 사실상 끝. 추가 작업은:
+`rerender-split-combined-hooks` 도입으로 사이드카 룰 **5개 구현 + 1개 의도적 미구현(겹침) + 2개 도입 보류(MEDIUM 잔여)**. 추가 작업은:
 
-1. **운영 관측을 통한 후속 결정** — `v0.5.0` 출시 후 컨슈머 프로젝트에서 false positive 데이터를 모은다. 데이터가 쌓이면 그룹 C 중 하나를 ROI 기반으로 재평가.
-2. **upstream 업데이트 모니터링** — upstream `oxlint-plugin-react-doctor`가 새 룰을 추가하거나 기존 룰의 범위가 변하면 우리 사이드카 4개 룰의 겹침 가능성을 재검증.
+1. **운영 관측을 통한 후속 결정** — `v0.5.0` (또는 다음 minor) 출시 후 컨슈머 프로젝트에서 false positive 데이터를 모은다. `rerender-split-combined-hooks`가 실 환경에서 적정한 비율의 진단을 내는지 확인.
+2. **upstream 업데이트 모니터링** — upstream `oxlint-plugin-react-doctor`가 새 룰을 추가하거나 기존 룰의 범위가 변하면 우리 사이드카 룰들의 겹침 가능성을 재검증.
 
 ---
 
