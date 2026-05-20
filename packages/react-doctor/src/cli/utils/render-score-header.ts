@@ -72,4 +72,3 @@ export const printNoScoreHeader = (noScoreMessage: string): void => {
   logger.log(`  ${highlighter.gray(noScoreMessage)}`);
   logger.break();
 };
-

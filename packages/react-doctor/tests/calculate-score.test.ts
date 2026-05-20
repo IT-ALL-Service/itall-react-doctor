@@ -35,7 +35,11 @@ describe("calculateScore", () => {
   });
 
   it("subtracts WARNING_PENALTY_POINTS per warning diagnostic", () => {
-    const warnings = [buildDiagnostic("warning"), buildDiagnostic("warning"), buildDiagnostic("warning")];
+    const warnings = [
+      buildDiagnostic("warning"),
+      buildDiagnostic("warning"),
+      buildDiagnostic("warning"),
+    ];
     const result = calculateScore(warnings);
     expect(result.score).toBe(PERFECT_SCORE - 3 * WARNING_PENALTY_POINTS);
   });

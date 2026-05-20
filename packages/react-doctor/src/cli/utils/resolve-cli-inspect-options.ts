@@ -6,7 +6,10 @@ import type { InspectFlags } from "./inspect-flags.js";
 // 없어졌지만 컨슈머 워크플로 호환을 위해 deprecation noop으로 남긴다. 사용자가
 // 명시적으로 켰을 때 한 번 알림만 출력하고 동작은 동일.
 let offlineDeprecationWarned = false;
-const maybeWarnOfflineDeprecated = (flags: InspectFlags, userConfig: ReactDoctorConfig | null): void => {
+const maybeWarnOfflineDeprecated = (
+  flags: InspectFlags,
+  userConfig: ReactDoctorConfig | null,
+): void => {
   if (offlineDeprecationWarned) return;
   if (flags.offline || userConfig?.offline) {
     logger.dim(

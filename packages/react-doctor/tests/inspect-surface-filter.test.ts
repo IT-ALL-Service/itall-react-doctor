@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { inspect } from "../src/inspect.js";
-import {
-  ERROR_PENALTY_POINTS,
-  PERFECT_SCORE,
-  WARNING_PENALTY_POINTS,
-} from "@react-doctor/core";
+import { ERROR_PENALTY_POINTS, PERFECT_SCORE, WARNING_PENALTY_POINTS } from "@react-doctor/core";
 import path from "node:path";
 import reactDoctorPlugin from "oxlint-plugin-react-doctor";
 
@@ -50,8 +46,7 @@ describe("inspect — score surface filter", () => {
       expect(returnedDesignDiagnostics.length).toBeGreaterThan(0);
 
       const nonDesignDiagnostics = result.diagnostics.filter(
-        (diagnostic) =>
-          !(diagnostic.plugin === "react-doctor" && hasDesignTag(diagnostic.rule)),
+        (diagnostic) => !(diagnostic.plugin === "react-doctor" && hasDesignTag(diagnostic.rule)),
       );
       const errorCount = nonDesignDiagnostics.filter((d) => d.severity === "error").length;
       const warningCount = nonDesignDiagnostics.filter((d) => d.severity === "warning").length;
