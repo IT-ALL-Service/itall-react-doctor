@@ -1,4 +1,5 @@
-import type { EslintRule, EslintRuleContext, EslintRuleVisitor } from "../types.js";
+import { defineItallRule } from "../define-itall-rule.js";
+import type { EslintRuleContext, EslintRuleVisitor } from "../types.js";
 
 // Anti-pattern: a logical `&&` chain whose left-hand side is an
 // `await` expression and whose right-hand side is a cheap, sync check.
@@ -94,7 +95,9 @@ const describeRhs = (node: AstNode): string => {
 const buildMessage = (awaitLabel: string, rhsLabel: string): string =>
   `Short-circuit \`${rhsLabel}\` first before \`${awaitLabel}\` — flipping the operands lets the cheap check skip the awaited call when it fails.`;
 
-export const asyncCheapConditionBeforeAwait: EslintRule = {
+export const asyncCheapConditionBeforeAwait = defineItallRule({
+  id: "async-cheap-condition-before-await",
+  defaultSeverity: "warn",
   meta: {
     type: "problem",
     docs: {
@@ -122,6 +125,6 @@ export const asyncCheapConditionBeforeAwait: EslintRule = {
       },
     };
   },
-};
+});
 
 export default asyncCheapConditionBeforeAwait;

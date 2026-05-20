@@ -3,23 +3,26 @@
 // `packages/eslint-plugin-itall-react/src/rules/<rule-key>.ts`:
 //
 //   1. `packages/eslint-plugin-itall-react/src/registry.gen.ts`
-//      → imports every rule, exports an `ITALL_RULES` record keyed by
-//        the rule key. Consumed by `src/index.ts` to populate the
-//        plugin's `rules` map.
+//      → imports every rule, exports `ITALL_DEFINITIONS` (full
+//        ItallRule[]) + `ITALL_RULES` (the ESLint-shape map the
+//        plugin exposes to oxlint).
 //
 //   2. `packages/core/src/runners/oxlint/itall-rules.gen.ts`
-//      → exports `ITALL_REACT_RULES` keyed by the namespaced rule id
-//        (`itall/<rule-key>`) with the default severity. Consumed by
-//        `plugin-resolution.ts` so the CLI knows which itall rules to
-//        enable when the sidecar plugin is installed.
+//      → exports `ITALL_REACT_RULE_METADATA` (per-key requires/tags/
+//        defaultSeverity) and a back-compat `ITALL_REACT_RULES` that
+//        the existing `filterRulesToAvailable` consumes. The CLI's
+//        config builder uses the richer metadata to filter sidecar
+//        rules by `shouldEnableRule(requires, tags, capabilities,
+//        ignoredTags)` — the same path upstream rules use.
 //
 // Convention-over-config:
 //   - Filename `async-cheap-condition-before-await.ts` → rule key
 //     `async-cheap-condition-before-await`.
 //   - Export name is the camelCase of the filename
 //     (`asyncCheapConditionBeforeAwait`).
-//   - Default severity is `warn`. To raise a specific rule, add an
-//     entry to `SEVERITY_OVERRIDES` below.
+//   - Each rule file MUST use `defineItallRule({ id, defaultSeverity,
+//     requires?, tags?, meta, create })`. The codegen parses these
+//     fields via regex (matching upstream `defineRule({...})` pattern).
 //
 // Output files are committed to git so consumers (and reviewers) can
 // see the wiring without running codegen. Re-run `pnpm gen` whenever a
@@ -46,14 +49,27 @@ const CORE_RULES_OUTPUT = path.join(
 );
 
 const NAMESPACE = "itall";
-const DEFAULT_SEVERITY = "warn";
-
-// Per-rule severity overrides. Leave empty unless a specific rule has
-// graduated from `warn` to `error` after operational soak.
-//   "rule-key": "error",
-const SEVERITY_OVERRIDES = {};
 
 const kebabToCamel = (kebab) => kebab.replace(/-([a-z])/g, (_, ch) => ch.toUpperCase());
+
+const extractStringField = (source, field) => {
+  const match = source.match(new RegExp(`^\\s*${field}:\\s*"([^"]+)",?\\s*$`, "m"));
+  return match ? match[1] : null;
+};
+
+const extractStringArrayField = (source, field) => {
+  // Matches `field: ["a", "b"]` on a single line. Multiline arrays are
+  // not supported on purpose — keeps the convention authorable in one
+  // glance and the codegen trivial.
+  const match = source.match(new RegExp(`^\\s*${field}:\\s*\\[([^\\]]*)\\],?\\s*$`, "m"));
+  if (!match) return null;
+  const inside = match[1].trim();
+  if (inside === "") return [];
+  return inside
+    .split(",")
+    .map((item) => item.trim().replace(/^["']|["']$/g, ""))
+    .filter((item) => item.length > 0);
+};
 
 const ruleKeys = fs
   .readdirSync(RULES_DIRECTORY, { withFileTypes: true })
@@ -68,39 +84,92 @@ if (ruleKeys.length === 0) {
   process.exit(1);
 }
 
-const rules = ruleKeys.map((ruleKey) => ({
-  ruleKey,
-  exportName: kebabToCamel(ruleKey),
-  modulePath: `./rules/${ruleKey}.js`,
-  severity: SEVERITY_OVERRIDES[ruleKey] ?? DEFAULT_SEVERITY,
-}));
+const rules = ruleKeys.map((ruleKey) => {
+  const filePath = path.join(RULES_DIRECTORY, `${ruleKey}.ts`);
+  const source = fs.readFileSync(filePath, "utf8");
+  if (!/defineItallRule\s*\(\s*\{/.test(source)) {
+    console.error(
+      `Rule file ${path.relative(REPO_ROOT, filePath)} does not use defineItallRule(...). Migrate to the helper so codegen can read its metadata.`,
+    );
+    process.exit(1);
+  }
+  const id = extractStringField(source, "id");
+  if (id !== ruleKey) {
+    console.error(
+      `Rule file ${path.relative(REPO_ROOT, filePath)} has id="${id ?? "<missing>"}" but filename implies "${ruleKey}". Filename and id must match (convention).`,
+    );
+    process.exit(1);
+  }
+  const defaultSeverity = extractStringField(source, "defaultSeverity") ?? "warn";
+  if (!["error", "warn", "off"].includes(defaultSeverity)) {
+    console.error(
+      `Rule file ${path.relative(REPO_ROOT, filePath)} has unknown defaultSeverity="${defaultSeverity}".`,
+    );
+    process.exit(1);
+  }
+  const requires = extractStringArrayField(source, "requires") ?? [];
+  const tags = extractStringArrayField(source, "tags") ?? [];
+  return {
+    ruleKey,
+    exportName: kebabToCamel(ruleKey),
+    modulePath: `./rules/${ruleKey}.js`,
+    defaultSeverity,
+    requires,
+    tags,
+  };
+});
 
 const PLUGIN_REGISTRY_HEADER = `// GENERATED FILE — do not edit by hand. Run \`pnpm gen\` to regenerate.
 // Source of truth: every \`*.ts\` file under \`src/rules/\`.
-// Adding a rule = drop the file under \`src/rules/\` and re-run codegen.
+// Adding a rule = drop the file under \`src/rules/\` (using defineItallRule)
+// and re-run codegen.
 
 `;
 
 const pluginRegistryBody =
   rules.map((r) => `import { ${r.exportName} } from "${r.modulePath}";`).join("\n") +
-  `\nimport type { EslintRule } from "./types.js";\n\n` +
-  `export const ITALL_RULES: Record<string, EslintRule> = {\n` +
-  rules.map((r) => `  "${r.ruleKey}": ${r.exportName},`).join("\n") +
-  `\n};\n`;
+  `\nimport type { EslintRule, ItallRule } from "./types.js";\n\n` +
+  `export const ITALL_DEFINITIONS: ReadonlyArray<ItallRule> = [\n` +
+  rules.map((r) => `  ${r.exportName},`).join("\n") +
+  `\n];\n\n` +
+  `export const ITALL_RULES: Record<string, EslintRule> = Object.fromEntries(\n` +
+  `  ITALL_DEFINITIONS.map((definition) => [definition.id, definition.rule]),\n` +
+  `);\n`;
 
 fs.writeFileSync(PLUGIN_REGISTRY_OUTPUT, PLUGIN_REGISTRY_HEADER + pluginRegistryBody);
 
 const CORE_RULES_HEADER = `// GENERATED FILE — do not edit by hand. Run \`pnpm gen\` (from \`@it-all-service/eslint-plugin-itall-react\`) to regenerate.
-// Mirror of every rule key exported by the sidecar plugin, namespaced as \`itall/<rule-key>\` with its default severity.
-// The CLI enables these rule keys when the optional peer plugin resolves at runtime.
+// Mirror of every rule key exported by the sidecar plugin, with the
+// metadata needed for capability + tag filtering in the CLI's oxlint
+// config builder (same path upstream react-doctor rules use).
 
 `;
 
+const formatStringArrayLiteral = (items) => {
+  if (items.length === 0) return "[]";
+  return `[${items.map((item) => JSON.stringify(item)).join(", ")}]`;
+};
+
 const coreRulesBody =
   `import type { OxlintRuleSeverity } from "oxlint-plugin-react-doctor";\n\n` +
-  `export const ITALL_REACT_RULES: Record<string, OxlintRuleSeverity> = {\n` +
-  rules.map((r) => `  "${NAMESPACE}/${r.ruleKey}": "${r.severity}",`).join("\n") +
-  `\n};\n`;
+  `export interface ItallReactRuleMetadata {\n` +
+  `  defaultSeverity: OxlintRuleSeverity;\n` +
+  `  requires: ReadonlyArray<string>;\n` +
+  `  tags: ReadonlyArray<string>;\n` +
+  `}\n\n` +
+  `export const ITALL_REACT_RULE_METADATA: Record<string, ItallReactRuleMetadata> = {\n` +
+  rules
+    .map(
+      (r) =>
+        `  "${NAMESPACE}/${r.ruleKey}": { defaultSeverity: "${r.defaultSeverity}", requires: ${formatStringArrayLiteral(r.requires)}, tags: ${formatStringArrayLiteral(r.tags)} },`,
+    )
+    .join("\n") +
+  `\n};\n\n` +
+  `// Back-compat surface — kept so existing \`filterRulesToAvailable\`\n` +
+  `// callers continue to work. Built from \`ITALL_REACT_RULE_METADATA\`.\n` +
+  `export const ITALL_REACT_RULES: Record<string, OxlintRuleSeverity> = Object.fromEntries(\n` +
+  `  Object.entries(ITALL_REACT_RULE_METADATA).map(([key, meta]) => [key, meta.defaultSeverity]),\n` +
+  `);\n`;
 
 fs.writeFileSync(CORE_RULES_OUTPUT, CORE_RULES_HEADER + coreRulesBody);
 

@@ -1,4 +1,5 @@
-import type { EslintRule, EslintRuleContext, EslintRuleVisitor } from "../types.js";
+import { defineItallRule } from "../define-itall-rule.js";
+import type { EslintRuleContext, EslintRuleVisitor } from "../types.js";
 
 // Anti-pattern: two consecutive `await Promise.all(<arr>.map(...))`
 // statements where the second's `<arr>` is the binding produced by the
@@ -138,7 +139,15 @@ const visitProgram = (node: AstNode, context: EslintRuleContext): void => {
   inspectStatements(statements, context);
 };
 
-export const serverParallelNestedFetching: EslintRule = {
+export const serverParallelNestedFetching = defineItallRule({
+  id: "server-parallel-nested-fetching",
+  defaultSeverity: "warn",
+  // Test files commonly set up fixtures with `await Promise.all(ids.map(getX))`
+  // followed by `await Promise.all(xs.map(getY))` to seed multi-stage data
+  // — that pattern is intentional in fixtures, not a perf bug. Tag opts
+  // every `*.test.*` / `e2e/` / `cypress/` path out via the core
+  // `merge-and-filter-diagnostics` auto-suppress pipeline.
+  tags: ["test-noise"],
   meta: {
     type: "problem",
     docs: {
@@ -159,6 +168,6 @@ export const serverParallelNestedFetching: EslintRule = {
       Program: handleProgram,
     };
   },
-};
+});
 
 export default serverParallelNestedFetching;

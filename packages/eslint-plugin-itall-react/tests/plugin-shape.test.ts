@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import plugin from "../src/index.js";
+import plugin, { ITALL_DEFINITIONS } from "../src/index.js";
 
 describe("@it-all-service/eslint-plugin-itall-react", () => {
   it("exports a plugin object with the expected shape", () => {
@@ -84,5 +84,23 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     expect(typeof visitor.FunctionExpression).toBe("function");
     expect(typeof visitor.ArrowFunctionExpression).toBe("function");
     expect(typeof visitor.Program).toBe("function");
+  });
+
+  it("ITALL_DEFINITIONS carries metadata for every registered rule", () => {
+    expect(ITALL_DEFINITIONS.length).toBeGreaterThan(0);
+    expect(ITALL_DEFINITIONS.length).toBe(Object.keys(plugin.rules).length);
+    for (const definition of ITALL_DEFINITIONS) {
+      expect(typeof definition.id).toBe("string");
+      expect(["error", "warn", "off"]).toContain(definition.defaultSeverity);
+      expect(definition.rule).toBe(plugin.rules[definition.id]);
+    }
+  });
+
+  it("server-parallel-nested-fetching is tagged test-noise (auto-suppresses in test files)", () => {
+    const definition = ITALL_DEFINITIONS.find(
+      (entry) => entry.id === "server-parallel-nested-fetching",
+    );
+    expect(definition).toBeDefined();
+    expect(definition?.tags ?? []).toContain("test-noise");
   });
 });

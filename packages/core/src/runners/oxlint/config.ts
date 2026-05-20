@@ -8,7 +8,11 @@ import reactDoctorPlugin, {
 import type { OxlintRuleSeverity } from "oxlint-plugin-react-doctor";
 import type { ProjectInfo, RuleSeverityControls } from "@react-doctor/types";
 import { resolveRuleSeverityOverride } from "../../resolve-rule-severity-override.js";
-import { buildCapabilities, shouldEnableRule } from "./capabilities.js";
+import {
+  buildCapabilities,
+  filterItallRulesByCapabilities,
+  shouldEnableRule,
+} from "./capabilities.js";
 import {
   filterRulesToAvailable,
   ITALL_REACT_NAMESPACE,
@@ -44,6 +48,10 @@ export const createOxlintConfig = ({
   serverAuthFunctionNames,
   severityControls,
 }: OxlintConfigOptions) => {
+  // Built up-front so sidecar rule filtering can read it (mirrors the
+  // upstream react-doctor rule loop further down).
+  const capabilities = buildCapabilities(project);
+
   const reactHooksJsPlugin = resolveReactHooksJsPlugin(project.hasReactCompiler, customRulesOnly);
   const reactCompilerRules = reactHooksJsPlugin
     ? filterRulesToAvailable(
@@ -64,10 +72,14 @@ export const createOxlintConfig = ({
 
   const itallReactPlugin = resolveItallReactPlugin(customRulesOnly);
   const itallReactRules = itallReactPlugin
-    ? filterRulesToAvailable(
-        ITALL_REACT_RULES,
-        ITALL_REACT_NAMESPACE,
-        itallReactPlugin.availableRuleNames,
+    ? filterItallRulesByCapabilities(
+        filterRulesToAvailable(
+          ITALL_REACT_RULES,
+          ITALL_REACT_NAMESPACE,
+          itallReactPlugin.availableRuleNames,
+        ),
+        capabilities,
+        ignoredTags,
       )
     : {};
 
@@ -75,8 +87,6 @@ export const createOxlintConfig = ({
   if (reactHooksJsPlugin) jsPlugins.push(reactHooksJsPlugin.entry);
   if (youMightNotNeedEffectPlugin) jsPlugins.push(youMightNotNeedEffectPlugin.entry);
   if (itallReactPlugin) jsPlugins.push(itallReactPlugin.entry);
-
-  const capabilities = buildCapabilities(project);
 
   const enabledReactDoctorRules: Record<string, OxlintRuleSeverity> = {};
   for (const [ruleId, rule] of Object.entries(reactDoctorPlugin.rules)) {
