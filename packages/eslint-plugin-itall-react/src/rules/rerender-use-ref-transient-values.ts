@@ -91,7 +91,60 @@ const collectSetterNames = (programBody: ReadonlyArray<AstNode>): Set<string> =>
   return setters;
 };
 
-const isAddEventListenerCall = (node: AstNode): { event: string; handler: AstNode } | null => {
+// Collects identifiers in the file that resolve to a function-like
+// node, so we can follow `addEventListener('mousemove', onMove)` back
+// to the body of `onMove`. We cover the three idiomatic forms used in
+// React code; closures captured inside other functions are also caught
+// because the walker descends through every nested statement.
+const collectFunctionDefinitions = (programBody: ReadonlyArray<AstNode>): Map<string, AstNode> => {
+  const definitions = new Map<string, AstNode>();
+  const recordVariableDeclarator = (node: AstNode): void => {
+    const id = node.id as AstNode | undefined;
+    const init = node.init as AstNode | undefined;
+    if (!id || id.type !== "Identifier" || !init) return;
+    if (!isFunctionLike(init)) return;
+    const name = id.name as string | undefined;
+    if (name && !definitions.has(name)) definitions.set(name, init);
+  };
+  const recordFunctionDeclaration = (node: AstNode): void => {
+    const id = node.id as AstNode | undefined;
+    if (!id || id.type !== "Identifier") return;
+    const name = id.name as string | undefined;
+    if (name && !definitions.has(name)) definitions.set(name, node);
+  };
+  const visit = (node: AstNode): void => {
+    if (node.type === "VariableDeclarator") recordVariableDeclarator(node);
+    else if (node.type === "FunctionDeclaration") recordFunctionDeclaration(node);
+  };
+  for (const stmt of programBody) walkSubtree(stmt, visit);
+  return definitions;
+};
+
+// Resolves a handler argument to a function-like body. Inline
+// functions return themselves; identifiers are looked up in the
+// program-scope definition map collected at Program-entry time. We do
+// not chase chains of identifier-to-identifier reassignments because
+// that is rare in React handler wiring and risks loops.
+const resolveHandlerFunction = (
+  handler: AstNode | undefined | null,
+  definitions: ReadonlyMap<string, AstNode>,
+): AstNode | null => {
+  if (!handler) return null;
+  if (isFunctionLike(handler)) return handler;
+  if (handler.type === "Identifier") {
+    const name = handler.name as string | undefined;
+    if (!name) return null;
+    return definitions.get(name) ?? null;
+  }
+  return null;
+};
+
+interface ListenerMatch {
+  event: string;
+  handlerNode: AstNode;
+}
+
+const matchAddEventListenerCall = (node: AstNode): ListenerMatch | null => {
   if (node.type !== "CallExpression") return null;
   const callee = node.callee as AstNode | undefined;
   if (!callee || callee.type !== "MemberExpression") return null;
@@ -109,16 +162,16 @@ const isAddEventListenerCall = (node: AstNode): { event: string; handler: AstNod
   ) {
     return null;
   }
-  if (!isFunctionLike(handler)) return null;
-  return { event: firstArg.value, handler };
+  if (!handler) return null;
+  return { event: firstArg.value, handlerNode: handler };
 };
 
-const findSetterCallsInHandler = (
-  handler: AstNode,
+const findSetterCallsInHandlerBody = (
+  handlerFunction: AstNode,
   setters: ReadonlySet<string>,
 ): Array<{ node: AstNode; setter: string }> => {
   const hits: Array<{ node: AstNode; setter: string }> = [];
-  walkSubtree(handler.body as AstNode, (innerNode) => {
+  walkSubtree(handlerFunction.body as AstNode, (innerNode) => {
     if (innerNode.type !== "CallExpression") return;
     const callee = innerNode.callee as AstNode | undefined;
     if (!callee || callee.type !== "Identifier") return;
@@ -146,18 +199,22 @@ export const rerenderUseRefTransientValues: EslintRule = {
   },
   create: (context: EslintRuleContext): EslintRuleVisitor => {
     let knownSetters: Set<string> = new Set();
+    let functionDefinitions: Map<string, AstNode> = new Map();
     return {
       Program(node) {
         const programNode = node as AstNode;
         const body = (programNode.body as Array<AstNode> | undefined) ?? [];
         knownSetters = collectSetterNames(body);
+        functionDefinitions = collectFunctionDefinitions(body);
       },
       CallExpression(node) {
         if (knownSetters.size === 0) return;
         const callNode = node as AstNode;
-        const listener = isAddEventListenerCall(callNode);
+        const listener = matchAddEventListenerCall(callNode);
         if (!listener) return;
-        for (const hit of findSetterCallsInHandler(listener.handler, knownSetters)) {
+        const handlerFunction = resolveHandlerFunction(listener.handlerNode, functionDefinitions);
+        if (!handlerFunction) return;
+        for (const hit of findSetterCallsInHandlerBody(handlerFunction, knownSetters)) {
           context.report({
             node: hit.node,
             message: buildMessage(listener.event, hit.setter),
@@ -174,11 +231,12 @@ export const rerenderUseRefTransientValues: EslintRule = {
         const value = attr.value as AstNode | undefined;
         if (!value || value.type !== "JSXExpressionContainer") return;
         const expression = value.expression as AstNode | undefined;
-        if (!isFunctionLike(expression)) return;
+        const handlerFunction = resolveHandlerFunction(expression, functionDefinitions);
+        if (!handlerFunction) return;
         // Strip the leading "on", lowercase first char of remainder, to
         // mirror the DOM event name in messages: "onMouseMove" -> "mousemove".
         const eventName = attrName.slice(2).toLowerCase();
-        for (const hit of findSetterCallsInHandler(expression as AstNode, knownSetters)) {
+        for (const hit of findSetterCallsInHandlerBody(handlerFunction, knownSetters)) {
           context.report({
             node: hit.node,
             message: buildMessage(eventName, hit.setter),
