@@ -1,3 +1,4 @@
+import { renderingHydrationSuppressWarning } from "./rules/rendering-hydration-suppress-warning.js";
 import { rerenderUseRefTransientValues } from "./rules/rerender-use-ref-transient-values.js";
 import type { EslintRule, ItallReactPlugin } from "./types.js";
 
@@ -6,6 +7,7 @@ const RULE_DOCS_BASE_URL =
   "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules";
 
 const rules: Record<string, EslintRule> = {
+  "rendering-hydration-suppress-warning": renderingHydrationSuppressWarning,
   "rerender-use-ref-transient-values": rerenderUseRefTransientValues,
 };
 

@@ -27,4 +27,24 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     expect(typeof visitor.CallExpression).toBe("function");
     expect(typeof visitor.JSXAttribute).toBe("function");
   });
+
+  it("registers the rendering-hydration-suppress-warning rule", () => {
+    const rule = plugin.rules["rendering-hydration-suppress-warning"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.type).toBe("problem");
+    expect(rule.meta.docs.recommended).toBe(true);
+    expect(rule.meta.docs.description).toContain("suppressHydrationWarning");
+    expect(typeof rule.create).toBe("function");
+  });
+
+  it("rendering-hydration-suppress-warning visitor covers JSX traversal hooks", () => {
+    const rule = plugin.rules["rendering-hydration-suppress-warning"];
+    const visitor = rule.create({
+      report: () => {},
+      getFilename: () => "test.tsx",
+    });
+    expect(typeof visitor.JSXElement).toBe("function");
+    expect(typeof visitor["JSXElement:exit"]).toBe("function");
+    expect(typeof visitor.JSXExpressionContainer).toBe("function");
+  });
 });
