@@ -222,6 +222,36 @@ Vercel react-best-practices 외에 itall 자체 컨벤션이 [`IT-ALL-Service/pa
 
 ---
 
+## 0-4. 운영 측정·관측 백로그 (2026-05-20)
+
+신규 룰 도입 후 false positive 비율을 정량으로 알 자동 측정 인프라는 **현재 없음**. v0.5.0 출시 시점의 운영 가설("warn으로 시작 → 6주 후 데이터 보고 승격/비활성")을 진짜 데이터로 뒷받침하려면 별도 작업이 필요. 다음 cold-start 때 손대기 좋게 정리.
+
+### 현재 가지고 있는 신호 (수동 집계 가능)
+
+- `react-doctor-disable-next-line <rule>` 인라인 주석은 인식·필터링됨 (`packages/core/src/find-stacked-disable-comments.ts`, `evaluate-suppression.ts`)
+- `react-doctor --json` 출력으로 모든 진단을 구조화된 형태로 추출 가능
+- `react-doctor --score`로 점수만 추출 가능
+
+### 자동화되지 않은 것
+
+- 진단 카운트의 시계열 기록 (CI 결과를 어딘가에 누적해 보존)
+- "어떤 룰을 얼마나 disable했는가" 집계
+- "warn → error 승격해도 안전한가" A/B 비교
+
+### 후속 작업 아이디어 (우선순위 순)
+
+1. **수치 누적 스크립트** (예상 3~4h) — `packages/sidecar-metrics/` 신규 패키지:
+   - `react-doctor --json` 출력을 `itall/<rule>`별로 그룹핑
+   - 코드베이스 grep으로 `react-doctor-disable-next-line` 카운트
+   - CSV 누적: `{ week, project, rule, diagnostic_count, disable_count, ratio }`
+   - cron으로 주간 실행, 사내 dashboard에 시계열 그래프
+2. **PR 리뷰 라벨 수집** (예상 1~2h) — GitHub Actions로 PR comment에 reviewer가 `react-doctor-false-positive` 라벨을 달면 별도 channel에 알림. 정성 데이터지만 가장 정확한 신호
+3. **A/B (severity 토글)** — 같은 코드베이스에서 룰을 `off`로 토글한 진단 수 vs `warn` 진단 수 비교. 한 번 실행만 필요
+
+`v0.5.0` 출시 후 사내 컨슈머가 1~2개 도입되면 그때 우선순위 1번부터 시작 권장. 그 전에는 PR comment(`.github/actions/pr-comment`)와 PR 리뷰에서 정성 피드백을 수집.
+
+---
+
 ## 0. 배경 (Context)
 
 ### 출발점
