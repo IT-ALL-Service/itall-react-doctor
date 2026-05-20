@@ -142,4 +142,64 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     expect(typeof visitor.FunctionExpression).toBe("function");
     expect(typeof visitor.ArrowFunctionExpression).toBe("function");
   });
+
+  it("registers the error-tsx-use-client rule", () => {
+    const rule = plugin.rules["error-tsx-use-client"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.docs.description).toContain("error.tsx");
+    expect(typeof rule.create).toBe("function");
+  });
+
+  it("error-tsx-use-client attaches only for error.tsx files", () => {
+    const rule = plugin.rules["error-tsx-use-client"];
+    const visitorInError = rule.create({
+      report: () => {},
+      getFilename: () => "/app/dashboard/error.tsx",
+    });
+    expect(typeof visitorInError.Program).toBe("function");
+
+    const visitorElsewhere = rule.create({
+      report: () => {},
+      getFilename: () => "/app/page.tsx",
+    });
+    expect(visitorElsewhere.Program).toBeUndefined();
+  });
+
+  it("registers the no-process-env-direct-access rule", () => {
+    const rule = plugin.rules["no-process-env-direct-access"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.docs.description).toContain("process.env");
+    expect(typeof rule.create).toBe("function");
+  });
+
+  it("no-process-env-direct-access exempts the env-defining file", () => {
+    const rule = plugin.rules["no-process-env-direct-access"];
+    const visitorInConsumer = rule.create({
+      report: () => {},
+      getFilename: () => "/src/components/banner.tsx",
+    });
+    expect(typeof visitorInConsumer.MemberExpression).toBe("function");
+
+    const visitorInEnvModule = rule.create({
+      report: () => {},
+      getFilename: () => "/src/lib/env.ts",
+    });
+    expect(visitorInEnvModule.MemberExpression).toBeUndefined();
+  });
+
+  it("registers the tanstack-query-key-array rule", () => {
+    const rule = plugin.rules["tanstack-query-key-array"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.docs.description).toContain("queryKey");
+    expect(typeof rule.create).toBe("function");
+  });
+
+  it("tanstack-query-key-array visitor covers CallExpression", () => {
+    const rule = plugin.rules["tanstack-query-key-array"];
+    const visitor = rule.create({
+      report: () => {},
+      getFilename: () => "test.tsx",
+    });
+    expect(typeof visitor.CallExpression).toBe("function");
+  });
 });

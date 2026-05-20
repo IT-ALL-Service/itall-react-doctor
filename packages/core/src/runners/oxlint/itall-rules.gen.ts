@@ -13,6 +13,8 @@ export interface ItallReactRuleMetadata {
 
 export const ITALL_REACT_RULE_METADATA: Record<string, ItallReactRuleMetadata> = {
   "itall/async-cheap-condition-before-await": { defaultSeverity: "warn", requires: [], tags: [] },
+  "itall/error-tsx-use-client": { defaultSeverity: "warn", requires: [], tags: [] },
+  "itall/no-process-env-direct-access": { defaultSeverity: "warn", requires: [], tags: [] },
   "itall/rendering-hydration-suppress-warning": { defaultSeverity: "warn", requires: [], tags: [] },
   "itall/rerender-split-combined-hooks": { defaultSeverity: "warn", requires: [], tags: [] },
   "itall/rerender-use-ref-transient-values": { defaultSeverity: "warn", requires: [], tags: [] },
@@ -22,6 +24,7 @@ export const ITALL_REACT_RULE_METADATA: Record<string, ItallReactRuleMetadata> =
     tags: ["test-noise"],
   },
   "itall/server-serialization": { defaultSeverity: "warn", requires: [], tags: [] },
+  "itall/tanstack-query-key-array": { defaultSeverity: "warn", requires: [], tags: [] },
 };
 
 // Back-compat surface — kept so existing `filterRulesToAvailable`

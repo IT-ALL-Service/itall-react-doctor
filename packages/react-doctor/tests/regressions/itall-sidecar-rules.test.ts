@@ -274,6 +274,165 @@ export function Forward({ user }: { user: User }) {
   });
 });
 
+describe("itall/error-tsx-use-client", () => {
+  it("flags an error.tsx file missing `'use client'` directive", async () => {
+    const projectDir = setupReactProject(tempRoot, "error-tsx-missing-use-client", {
+      files: {
+        "src/app/error.tsx": `interface Props { error: Error; reset: () => void }
+
+export default function GlobalError({ error, reset }: Props) {
+  return (
+    <div>
+      <h2>Something broke</h2>
+      <p>{error.message}</p>
+      <button onClick={reset}>Try again</button>
+    </div>
+  );
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "error-tsx-use-client");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag an error.tsx that declares `'use client'`", async () => {
+    const projectDir = setupReactProject(tempRoot, "error-tsx-with-use-client", {
+      files: {
+        "src/app/error.tsx": `"use client";
+
+interface Props { error: Error; reset: () => void }
+
+export default function GlobalError({ error, reset }: Props) {
+  return (
+    <div>
+      <p>{error.message}</p>
+      <button onClick={reset}>Try again</button>
+    </div>
+  );
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "error-tsx-use-client");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT flag a regular page.tsx file", async () => {
+    const projectDir = setupReactProject(tempRoot, "page-tsx-no-fire", {
+      files: {
+        "src/app/page.tsx": `export default function HomePage() {
+  return <main>Home</main>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "error-tsx-use-client");
+    expect(hits.length).toBe(0);
+  });
+});
+
+describe("itall/no-process-env-direct-access", () => {
+  it("flags `process.env.API_KEY` in a regular consumer file", async () => {
+    const projectDir = setupReactProject(tempRoot, "process-env-consumer", {
+      files: {
+        "src/components/banner.tsx": `export function Banner() {
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+  return <div data-key={apiKey}>...</div>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-process-env-direct-access");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag `process.env` access inside lib/env.ts (the env-defining module)", async () => {
+    const projectDir = setupReactProject(tempRoot, "process-env-defining-module", {
+      files: {
+        "src/lib/env.ts": `export const env = {
+  apiKey: process.env.API_KEY,
+  publicBase: process.env.NEXT_PUBLIC_BASE,
+};
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-process-env-direct-access");
+    expect(hits.length).toBe(0);
+  });
+});
+
+describe("itall/tanstack-query-key-array", () => {
+  it("flags `useQuery({ queryKey: 'events' })` with a bare string key", async () => {
+    const projectDir = setupReactProject(tempRoot, "tanstack-key-string", {
+      files: {
+        "src/list.tsx": `declare function useQuery<T>(options: { queryKey: unknown; queryFn: () => T }): { data: T | undefined };
+declare function fetchEvents(): Promise<unknown[]>;
+
+export function EventList() {
+  const { data } = useQuery({ queryKey: "events", queryFn: fetchEvents });
+  return <pre>{JSON.stringify(data)}</pre>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "tanstack-query-key-array");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("flags `useMutation({ mutationKey: 'create' })` with a bare string key", async () => {
+    const projectDir = setupReactProject(tempRoot, "tanstack-mutation-key-string", {
+      files: {
+        "src/create.tsx": `declare function useMutation<TVars>(options: { mutationKey: unknown; mutationFn: (vars: TVars) => Promise<void> }): { mutate: (vars: TVars) => void };
+
+export function CreateButton() {
+  const { mutate } = useMutation({ mutationKey: "create-event", mutationFn: async () => {} });
+  return <button onClick={() => mutate({})}>Create</button>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "tanstack-query-key-array");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag an array key", async () => {
+    const projectDir = setupReactProject(tempRoot, "tanstack-key-array", {
+      files: {
+        "src/list.tsx": `declare function useQuery<T>(options: { queryKey: unknown; queryFn: () => T }): { data: T | undefined };
+declare function fetchEvents(filter: unknown): Promise<unknown[]>;
+
+export function EventList({ filter }: { filter: unknown }) {
+  const { data } = useQuery({ queryKey: ["events", filter], queryFn: () => fetchEvents(filter) });
+  return <pre>{JSON.stringify(data)}</pre>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "tanstack-query-key-array");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT flag identifier keys (factory-built key constants)", async () => {
+    const projectDir = setupReactProject(tempRoot, "tanstack-key-identifier", {
+      files: {
+        "src/list.tsx": `declare function useQuery<T>(options: { queryKey: unknown; queryFn: () => T }): { data: T | undefined };
+declare function fetchEvents(): Promise<unknown[]>;
+
+const eventListKey = ["events", "all"] as const;
+
+export function EventList() {
+  const { data } = useQuery({ queryKey: eventListKey, queryFn: fetchEvents });
+  return <pre>{JSON.stringify(data)}</pre>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "tanstack-query-key-array");
+    expect(hits.length).toBe(0);
+  });
+});
+
 // NOTE: `async-api-routes` was deliberately NOT shipped — upstream's
 // `react-doctor/server-sequential-independent-await` already covers
 // the same pattern across every async function body, and a sidecar
