@@ -99,58 +99,9 @@ export async function loadAll(items: string[]) {
   });
 });
 
-describe("itall/async-api-routes", () => {
-  it("flags independent sequential awaits in a route.ts handler", async () => {
-    const projectDir = setupReactProject(tempRoot, "async-api-routes-fire", {
-      files: {
-        "src/app/api/dashboard/route.ts": `declare function fetchUser(): Promise<unknown>;
-declare function fetchPosts(): Promise<unknown>;
-
-export async function GET() {
-  const user = await fetchUser();
-  const posts = await fetchPosts();
-  return Response.json({ user, posts });
-}
-`,
-      },
-    });
-    const hits = await collectRuleHits(projectDir, "async-api-routes");
-    expect(hits.length).toBeGreaterThan(0);
-  });
-
-  it("does NOT flag handlers outside route.ts files", async () => {
-    const projectDir = setupReactProject(tempRoot, "async-api-routes-skip-non-route", {
-      files: {
-        "src/lib/data.ts": `declare function fetchUser(): Promise<unknown>;
-declare function fetchPosts(): Promise<unknown>;
-
-export async function GET() {
-  const user = await fetchUser();
-  const posts = await fetchPosts();
-  return { user, posts };
-}
-`,
-      },
-    });
-    const hits = await collectRuleHits(projectDir, "async-api-routes");
-    expect(hits.length).toBe(0);
-  });
-
-  it("does NOT flag when the second await depends on the first", async () => {
-    const projectDir = setupReactProject(tempRoot, "async-api-routes-dependent", {
-      files: {
-        "src/app/api/me/route.ts": `declare function fetchUser(): Promise<{ id: string }>;
-declare function fetchPostsForUser(id: string): Promise<unknown>;
-
-export async function GET() {
-  const user = await fetchUser();
-  const posts = await fetchPostsForUser(user.id);
-  return Response.json({ user, posts });
-}
-`,
-      },
-    });
-    const hits = await collectRuleHits(projectDir, "async-api-routes");
-    expect(hits.length).toBe(0);
-  });
-});
+// NOTE: `async-api-routes` was deliberately NOT shipped — upstream's
+// `react-doctor/server-sequential-independent-await` already covers
+// the same pattern across every async function body, and a sidecar
+// copy targeting `route.ts(x)` would double-report on the same line
+// and skew the diagnostic score. See `docs/sidecar-eslint-plugin-plan.md`
+// (overlap policy + rule 5 status) for the decision record.
