@@ -193,9 +193,16 @@ runs:
         IT_ALL_NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_DIFF: ${{ inputs.diff }}
         INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
       run: |
+        # Run step과 같은 scope에서 채점 — 안 그러면 monorepo 전체 / 풀스캔
+        # 결과의 점수가 sticky 코멘트 헤더에 들어가서 본문(`--pr-comment` 결과)의
+        # 점수와 어긋난다.
         SCORE_ARGS=("$INPUT_DIRECTORY" "--score" "--fail-on" "none" "--yes")
+        if [ -n "$INPUT_PROJECT" ]; then SCORE_ARGS+=("--project" "$INPUT_PROJECT"); fi
+        if [ -n "$INPUT_DIFF" ]; then SCORE_ARGS+=("--diff" "$INPUT_DIFF"); fi
         SCORE=$(npx -y "@it-all-service/react-doctor@$INPUT_RD_VERSION" \
           "${SCORE_ARGS[@]}" 2>/dev/null | tail -1 | tr -d '[:space:]') || true
         if [[ -n "$SCORE" && "$SCORE" =~ ^[0-9]+$ ]]; then
