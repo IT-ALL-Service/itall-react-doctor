@@ -22,13 +22,14 @@ export const SCORE_OK_THRESHOLD = 50;
 
 export const SCORE_BAR_WIDTH_CHARS = 50;
 
-export const SCORE_API_URL = "https://www.react.doctor/api/score";
+// itall fork: 외부 scoring API 호출을 제거하고 로컬에서 점수를 산출.
+// 산식 = max(0, PERFECT_SCORE - errors*ERROR_PENALTY - warnings*WARNING_PENALTY).
+// 입력 diagnostics는 호출부에서 `filterDiagnosticsForSurface("score", ...)` 를
+// 거쳐 weak-signal tag (`design` 등) 가 빠진 상태로 들어온다. 산식이 보수적
+// 이라 한두 개 error만 있어도 Healthy 임계값(75) 아래로 떨어진다 — 의도된 동작.
+export const ERROR_PENALTY_POINTS = 10;
 
-export const SHARE_BASE_URL = "https://www.react.doctor/share";
-
-export const REACT_REVIEW_URL = "https://react.review";
-
-export const FETCH_TIMEOUT_MS = 10_000;
+export const WARNING_PENALTY_POINTS = 3;
 
 // HACK: Windows CreateProcessW limits total command-line length to 32,767 chars.
 // Use a conservative threshold to leave room for the executable path and quoting overhead.

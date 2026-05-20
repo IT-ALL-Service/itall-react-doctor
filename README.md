@@ -68,7 +68,11 @@ jobs:
 
 `@v0`은 publish 워크플로가 v0.x 릴리스마다 자동으로 같은 commit으로 이동시키는 major moving tag다. 컨슈머는 새 minor/patch가 나올 때마다 워크플로를 고칠 필요가 없다. 정확한 버전에 고정하고 싶으면 `@v0.5.0` 형태로 바꿀 수 있다.
 
-CLI 패키지 버전도 default가 `latest`라 따로 명시 안 해도 된다 (안정성이 중요하면 `react-doctor-version: 0.5.0` 같은 명시 옵션 있음). 자세한 입력값·동작은 [`action.yml`](./action.yml) 본문에 인라인 주석으로 정리돼 있다.
+CLI 패키지 버전도 default가 `latest`라 따로 명시 안 해도 된다 (안정성이 중요하면 `react-doctor-version: 0.6.0` 같은 명시 옵션 있음). 자세한 입력값·동작은 [`action.yml`](./action.yml) 본문에 인라인 주석으로 정리돼 있다.
+
+### offline-only
+
+`0.6.0`부터 외부 `react.doctor` scoring API / share URL / "React Review" CTA 통합이 모두 제거됐다. diagnostics 메타데이터를 외부 서버로 보낼 일이 없고, 점수는 로컬에서 `max(0, 100 - errors*10 - warnings*3)` 산식으로 계산한다. `--offline` 플래그와 `offline` config 필드, action `offline` 입력은 deprecation noop으로 남겨두지만 새 워크플로에서는 빼는 게 좋다.
 
 ## 사이드카 룰
 

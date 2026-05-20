@@ -36,11 +36,6 @@ inputs:
       surface inline in the PR's "Files changed" view. Combined with the
       sticky comment, you get both inline + summary in one CI step.
     default: "false"
-  offline:
-    description: |
-      Skip the react.doctor scoring API and calculate the score locally
-      (recommended for internal forks; default `true`).
-    default: "true"
   github-token:
     description: |
       Token used (1) to install the private @it-all-service/react-doctor
@@ -154,7 +149,6 @@ runs:
         INPUT_DIFF: ${{ inputs.diff }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_ANNOTATIONS: ${{ inputs.annotations }}
-        INPUT_OFFLINE: ${{ inputs.offline }}
         INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
         RUNNER_TEMP: ${{ runner.temp }}
         GITHUB_RUN_ID: ${{ github.run_id }}
@@ -162,7 +156,6 @@ runs:
         FLAGS=("--fail-on" "$INPUT_FAIL_ON" "--yes" "--verbose")
         if [ -n "$INPUT_PROJECT" ]; then FLAGS+=("--project" "$INPUT_PROJECT"); fi
         if [ -n "$INPUT_DIFF" ]; then FLAGS+=("--diff" "$INPUT_DIFF"); fi
-        if [ "$INPUT_OFFLINE" = "true" ]; then FLAGS+=("--offline"); fi
         if [ "$INPUT_ANNOTATIONS" = "true" ]; then FLAGS+=("--annotations"); fi
 
         OUTPUT_FILE="${RUNNER_TEMP:-/tmp}/itall-react-doctor-output-${GITHUB_RUN_ID:-$$}.txt"
@@ -200,11 +193,9 @@ runs:
         IT_ALL_NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
-        INPUT_OFFLINE: ${{ inputs.offline }}
         INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
       run: |
         SCORE_ARGS=("$INPUT_DIRECTORY" "--score" "--fail-on" "none" "--yes")
-        if [ "$INPUT_OFFLINE" = "true" ]; then SCORE_ARGS+=("--offline"); fi
         SCORE=$(npx -y "@it-all-service/react-doctor@$INPUT_RD_VERSION" \
           "${SCORE_ARGS[@]}" 2>/dev/null | tail -1 | tr -d '[:space:]') || true
         if [[ -n "$SCORE" && "$SCORE" =~ ^[0-9]+$ ]]; then

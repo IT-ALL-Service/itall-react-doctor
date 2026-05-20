@@ -1,49 +1,37 @@
-import { FETCH_TIMEOUT_MS, SCORE_API_URL } from "./constants.js";
+import {
+  ERROR_PENALTY_POINTS,
+  PERFECT_SCORE,
+  SCORE_GOOD_THRESHOLD,
+  SCORE_OK_THRESHOLD,
+  WARNING_PENALTY_POINTS,
+} from "./constants.js";
 import type { Diagnostic, ScoreResult } from "@react-doctor/types";
 
-const parseScoreResult = (value: unknown): ScoreResult | null => {
-  if (typeof value !== "object" || value === null) return null;
-  if (!("score" in value) || !("label" in value)) return null;
-  const scoreValue = Reflect.get(value, "score");
-  const labelValue = Reflect.get(value, "label");
-  if (typeof scoreValue !== "number" || typeof labelValue !== "string") return null;
-  return { score: scoreValue, label: labelValue };
-};
-
-const stripFilePaths = (diagnostics: Diagnostic[]): Omit<Diagnostic, "filePath">[] =>
-  diagnostics.map(({ filePath: _filePath, ...rest }) => rest);
-
-const isAbortError = (error: unknown): boolean =>
-  error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError");
-
-const describeFailure = (error: unknown): string => {
-  if (isAbortError(error)) return `timed out after ${FETCH_TIMEOUT_MS / 1000}s`;
-  if (error instanceof Error && error.message) return error.message;
-  return String(error);
-};
-
-export const calculateScore = async (diagnostics: Diagnostic[]): Promise<ScoreResult | null> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(SCORE_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ diagnostics: stripFilePaths(diagnostics) }),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      console.warn(`[react-doctor] Score API returned ${response.status} ${response.statusText}`);
-      return null;
-    }
-
-    return parseScoreResult(await response.json());
-  } catch (error) {
-    console.warn(`[react-doctor] Score API unreachable (${describeFailure(error)})`);
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
+// 사내 fork는 외부 scoring API 의존을 끊고 로컬에서 점수를 산출한다.
+// 입력 diagnostics는 호출부에서 `filterDiagnosticsForSurface("score", ...)`
+// 를 거친 상태로 들어와야 한다 — design 같은 weak-signal tag가 빠진 뒤
+// 점수가 매겨지도록.
+//
+// 산식: PERFECT_SCORE - (errors × ERROR_PENALTY) - (warnings × WARNING_PENALTY)
+//       0 미만은 0으로 clamp.
+// 라벨 임계값: SCORE_GOOD_THRESHOLD(75) / SCORE_OK_THRESHOLD(50).
+// upstream 라벨 문구 ("Healthy"/"Needs attention"/"Critical") 는 score 렌더링
+// 컬러링 로직(colorize-by-score) 과 일치시키기 위해 그대로 유지한다.
+export const calculateScore = (diagnostics: Diagnostic[]): ScoreResult => {
+  let errorCount = 0;
+  let warningCount = 0;
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.severity === "error") errorCount += 1;
+    else if (diagnostic.severity === "warning") warningCount += 1;
   }
+
+  const penalty = errorCount * ERROR_PENALTY_POINTS + warningCount * WARNING_PENALTY_POINTS;
+  const score = Math.max(0, PERFECT_SCORE - penalty);
+
+  let label: string;
+  if (score >= SCORE_GOOD_THRESHOLD) label = "Healthy";
+  else if (score >= SCORE_OK_THRESHOLD) label = "Needs attention";
+  else label = "Critical";
+
+  return { score, label };
 };

@@ -175,7 +175,8 @@ export const diagnose = async (
     respectInlineDisables: effectiveRespectInlineDisables,
   });
   const elapsedMilliseconds = globalThis.performance.now() - startTime;
-  const score = await calculateScore(diagnostics);
+  // itall fork: 로컬 산식이므로 await 불필요.
+  const score = calculateScore(diagnostics);
 
   return { diagnostics, score, project: projectInfo, elapsedMilliseconds };
 };

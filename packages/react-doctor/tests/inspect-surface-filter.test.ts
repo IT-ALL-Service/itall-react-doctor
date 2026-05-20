@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { inspect } from "../src/inspect.js";
+import { ERROR_PENALTY_POINTS, PERFECT_SCORE, WARNING_PENALTY_POINTS } from "@react-doctor/core";
 import path from "node:path";
 import reactDoctorPlugin from "oxlint-plugin-react-doctor";
 
@@ -19,73 +20,55 @@ vi.mock("ora", () => ({
 
 const FIXTURES_DIRECTORY = path.resolve(import.meta.dirname, "fixtures");
 
-interface CapturedFetchCall {
-  url: string;
-  body: string;
-}
-
-const stubScoreFetchAndCapture = (): { captured: CapturedFetchCall[] } => {
-  const captured: CapturedFetchCall[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
-      captured.push({ url, body: String(init?.body ?? "") });
-      return new Response(JSON.stringify({ score: 90, label: "Great" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }),
-  );
-  return { captured };
-};
+const hasDesignTag = (ruleId: string): boolean =>
+  reactDoctorPlugin.rules[ruleId]?.tags?.includes("design") ?? false;
 
 describe("inspect — score surface filter", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it("strips `design`-tagged diagnostics before they are sent to the score API", async () => {
+  // itall fork regression: 외부 score API 가 사라지고 로컬 산식으로 전환된 뒤에도
+  // `design`-tag diagnostics 가 점수에 반영되지 않아야 한다 (`score` surface 사전
+  // 필터링 동작 보존). 점수 = PERFECT_SCORE - errors*ERROR_PENALTY - warnings*WARNING_PENALTY
+  // 라는 산식을 non-design diagnostics 에만 적용한 결과와 일치해야 한다.
+  it("excludes `design`-tagged diagnostics from the local score input", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const { captured } = stubScoreFetchAndCapture();
 
     try {
       const result = await inspect(path.join(FIXTURES_DIRECTORY, "basic-react"), {
         lint: true,
-        offline: false,
       });
-
-      const scoreCall = captured.find(({ url }) => url.includes("score"));
-      expect(scoreCall).toBeDefined();
-      const scorePayload: { diagnostics: Array<{ rule: string; plugin: string }> } = JSON.parse(
-        scoreCall?.body ?? "{}",
-      );
-
-      const hasDesignTag = (ruleId: string): boolean =>
-        reactDoctorPlugin.rules[ruleId]?.tags?.includes("design") ?? false;
-
-      const sentDesignDiagnostics = scorePayload.diagnostics.filter(
-        (diagnostic) => diagnostic.plugin === "react-doctor" && hasDesignTag(diagnostic.rule),
-      );
-      expect(sentDesignDiagnostics).toEqual([]);
 
       const returnedDesignDiagnostics = result.diagnostics.filter(
         (diagnostic) => diagnostic.plugin === "react-doctor" && hasDesignTag(diagnostic.rule),
       );
       expect(returnedDesignDiagnostics.length).toBeGreaterThan(0);
+
+      const nonDesignDiagnostics = result.diagnostics.filter(
+        (diagnostic) => !(diagnostic.plugin === "react-doctor" && hasDesignTag(diagnostic.rule)),
+      );
+      const errorCount = nonDesignDiagnostics.filter((d) => d.severity === "error").length;
+      const warningCount = nonDesignDiagnostics.filter((d) => d.severity === "warning").length;
+      const expectedScore = Math.max(
+        0,
+        PERFECT_SCORE - errorCount * ERROR_PENALTY_POINTS - warningCount * WARNING_PENALTY_POINTS,
+      );
+
+      expect(result.score).not.toBeNull();
+      expect(result.score?.score).toBe(expectedScore);
     } finally {
       consoleSpy.mockRestore();
     }
   });
 
-  // Regression for the Bugbot finding on #271: the `cli` outputSurface
+  // Regression for the Bugbot finding on upstream #271: the `cli` outputSurface
   // used to short-circuit to the raw diagnostic list, which silently
   // dropped any user-configured `surfaces.cli.exclude*` controls before
   // the printed output rendered. The filter now always runs so user
   // overrides on the cli surface flow through end-to-end.
   it("honors user-configured `surfaces.cli` overrides on the printed output", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    stubScoreFetchAndCapture();
     const printedLines: string[] = [];
     consoleSpy.mockImplementation((...args: unknown[]) => {
       printedLines.push(args.map(String).join(" "));
@@ -94,7 +77,6 @@ describe("inspect — score surface filter", () => {
     try {
       const baselineResult = await inspect(path.join(FIXTURES_DIRECTORY, "basic-react"), {
         lint: true,
-        offline: true,
       });
       const baselineDesignCount = baselineResult.diagnostics.filter(
         (diagnostic) =>
@@ -106,7 +88,6 @@ describe("inspect — score surface filter", () => {
 
       await inspect(path.join(FIXTURES_DIRECTORY, "basic-react"), {
         lint: true,
-        offline: true,
         outputSurface: "cli",
         configOverride: { surfaces: { cli: { excludeTags: ["design"] } } },
       });

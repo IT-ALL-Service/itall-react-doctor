@@ -28,7 +28,7 @@ const program = new Command()
     "--diff [base]",
     "scan only files changed vs base branch (pass `false` to disable; overridden by --full)",
   )
-  .option("--offline", "skip the score API and the share URL (no score is shown)")
+  .option("--offline", "[deprecated] no-op; the itall fork already runs offline-only")
   .option("--staged", "scan only staged (git index) files for pre-commit hooks")
   .option(
     "--fail-on <level>",

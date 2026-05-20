@@ -22,6 +22,7 @@ import type {
   InspectOptions,
   InspectResult,
   ReactDoctorConfig,
+  ScoreResult,
 } from "@react-doctor/types";
 import { printDiagnostics } from "./cli/utils/render-diagnostics.js";
 import { printProjectDetection } from "./cli/utils/render-project-detection.js";
@@ -38,11 +39,11 @@ interface ResolvedInspectOptions {
   lint: boolean;
   verbose: boolean;
   scoreOnly: boolean;
+  // itall fork: `offline` 는 deprecation noop. CLI 플래그 호환을 위해 필드만 유지.
   offline: boolean;
   silent: boolean;
   includePaths: string[];
   customRulesOnly: boolean;
-  share: boolean;
   respectInlineDisables: boolean;
   adoptExistingLintConfig: boolean;
   ignoredTags: ReadonlySet<string>;
@@ -68,7 +69,6 @@ const mergeInspectOptions = (
   silent: inputOptions.silent ?? false,
   includePaths: inputOptions.includePaths ?? [],
   customRulesOnly: userConfig?.customRulesOnly ?? false,
-  share: userConfig?.share ?? true,
   respectInlineDisables:
     inputOptions.respectInlineDisables ?? userConfig?.respectInlineDisables ?? true,
   adoptExistingLintConfig: userConfig?.adoptExistingLintConfig ?? true,
@@ -207,24 +207,15 @@ const runInspect = async (
   if (didLintFail) skippedChecks.push("lint");
   const hasSkippedChecks = skippedChecks.length > 0;
 
-  // HACK: --offline opts out of the score API entirely; without a
-  // local fallback (intentional — scoring lives on the server) we
-  // simply skip the score in offline mode and the renderer shows the
-  // "score unavailable" branch. The message distinguishes the two
-  // null sources — `--offline` (user-requested) vs API failure (the
-  // network round-trip didn't return a usable score) — so the
-  // renderer doesn't claim offline mode when the user is online but
-  // the API was unreachable.
-  //
+  // itall fork: 점수는 로컬에서 산출되며 외부 API 호출은 없다.
   // Pre-filter diagnostics through the `score` surface so weak-signal
   // rule families (e.g. `design`) stay out of scoring by default and
   // don't dilute the headline number. Surface-included diagnostics
   // still flow through `result.diagnostics` for CLI/JSON consumers.
+  // `noScoreMessage` 는 lint 자체가 실패해 score 가 무의미할 때만 표시.
   const scoreDiagnostics = filterDiagnosticsForSurface(diagnostics, "score", userConfig);
-  const scoreResult = options.offline ? null : await calculateScore(scoreDiagnostics);
-  const noScoreMessage = options.offline
-    ? "Score unavailable in offline mode."
-    : "Score unavailable (could not reach the score API).";
+  const scoreResult: ScoreResult | null = didLintFail ? null : calculateScore(scoreDiagnostics);
+  const noScoreMessage = "Score unavailable — lint check failed.";
 
   const skippedCheckReasons: Record<string, string> = {};
   if (didLintFail && lintFailureReason !== null) {
@@ -308,15 +299,12 @@ const runInspect = async (
 
   const displayedSourceFileCount = isDiffMode ? includePaths.length : lintSourceFileCount;
 
-  const shouldShowShareLink = !options.offline && options.share;
   printSummary(
     surfaceDiagnostics,
     elapsedMilliseconds,
     scoreResult,
-    projectInfo.projectName,
     displayedSourceFileCount,
     noScoreMessage,
-    !shouldShowShareLink,
   );
 
   if (hasSkippedChecks) {
