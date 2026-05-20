@@ -102,8 +102,11 @@ export const ITALL_REACT_NAMESPACE = "itall";
 // implemented in the sidecar package and wired through
 // `filterRulesToAvailable`.
 export const ITALL_REACT_RULES: Record<string, OxlintRuleSeverity> = {
+  "itall/async-api-routes": "warn",
+  "itall/async-cheap-condition-before-await": "warn",
   "itall/rendering-hydration-suppress-warning": "warn",
   "itall/rerender-use-ref-transient-values": "warn",
+  "itall/server-parallel-nested-fetching": "warn",
 };
 
 export const resolveItallReactPlugin = (
