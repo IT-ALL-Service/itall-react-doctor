@@ -202,4 +202,53 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     });
     expect(typeof visitor.CallExpression).toBe("function");
   });
+
+  it("registers the route-segment-explicit-name rule and only activates in routing files", () => {
+    const rule = plugin.rules["route-segment-explicit-name"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.docs.description).toContain("routing files");
+    const visitorInPage = rule.create({
+      report: () => {},
+      getFilename: () => "/app/dashboard/page.tsx",
+    });
+    expect(typeof visitorInPage.ExportDefaultDeclaration).toBe("function");
+    const visitorElsewhere = rule.create({
+      report: () => {},
+      getFilename: () => "/lib/util.ts",
+    });
+    expect(visitorElsewhere.ExportDefaultDeclaration).toBeUndefined();
+  });
+
+  it("registers the no-document-title-mutation rule", () => {
+    const rule = plugin.rules["no-document-title-mutation"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.docs.description).toContain("document.title");
+    const visitor = rule.create({
+      report: () => {},
+      getFilename: () => "test.tsx",
+    });
+    expect(typeof visitor.AssignmentExpression).toBe("function");
+  });
+
+  it("registers the component-function-declaration rule", () => {
+    const rule = plugin.rules["component-function-declaration"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.docs.description).toContain("function");
+    const visitor = rule.create({
+      report: () => {},
+      getFilename: () => "test.tsx",
+    });
+    expect(typeof visitor.VariableDeclarator).toBe("function");
+  });
+
+  it("registers the no-type-prefix-suffix rule", () => {
+    const rule = plugin.rules["no-type-prefix-suffix"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.docs.description).toContain("type");
+    const visitor = rule.create({
+      report: () => {},
+      getFilename: () => "test.ts",
+    });
+    expect(typeof visitor.Program).toBe("function");
+  });
 });

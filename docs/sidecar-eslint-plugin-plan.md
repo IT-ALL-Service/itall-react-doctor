@@ -1,6 +1,6 @@
 # 사이드카 ESLint Plugin 통합 계획
 
-> 상태: **9개 룰 구현 + 1개 의도적 미구현** (Vercel react-best-practices 6 + 사내 claude-presets 3)
+> 상태: **13개 룰 구현 + 1개 의도적 미구현** (Vercel react-best-practices 6 + 사내 claude-presets 7)
 > 최초 작성일: 2026-05-19 · 마지막 업데이트: 2026-05-20
 > 목적: Vercel react-best-practices와 사내 [`IT-ALL-Service/packages` claude-presets](https://github.com/IT-ALL-Service/packages/tree/main/packages/claude-presets/rules)에서 mechanical하게 커버 못 하는 룰 중 안전하게 잡을 수 있는 것을 사내 ESLint plugin으로 추가하고, **단일 react-doctor 점수**에 합산되도록 통합
 
@@ -22,20 +22,24 @@ react-doctor 점수는 모든 진단의 합으로 계산된다. 같은 anti-patt
 
 ## 현재 진척 (한눈에)
 
-| #   | 룰                                           | 상태                                                                                                                 | 비고                                                                          |
-| --- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 1   | `itall/rerender-use-ref-transient-values`    | ✅ **구현 완료** (v0.3.0, identifier resolution은 v0.4.0)                                                            | 인라인 핸들러 + 같은 파일의 함수 정의 추적                                    |
-| 2   | `itall/async-cheap-condition-before-await`   | ✅ **구현 완료** (v0.5.0)                                                                                            | LogicalExpression(`&&`) 분석                                                  |
-| 3   | `itall/rendering-hydration-suppress-warning` | ✅ **구현 완료** (v0.4.0)                                                                                            | new Date/Math.random/Intl 등 + JSXElement 조상 스택                           |
-| 4   | `itall/server-parallel-nested-fetching`      | ✅ **구현 완료** (v0.5.0, `tags: ["test-noise"]`)                                                                    | `Promise.all(...map())` 두 단 sequential 변수 추적                            |
-| 5   | `itall/async-api-routes`                     | ❌ **의도적 미구현** — upstream `react-doctor/server-sequential-independent-await`(+3개부터 `async-parallel`)와 겹침 | 결정 근거는 위 "겹침 정책" · §3-룰5 데시전 레코드                             |
-| 6   | `itall/rerender-split-combined-hooks`        | ✅ **구현 완료** (useMemo 한정, 2026-05-20)                                                                          | dep array의 disjoint subset만 참조하는 step 분리 권고 · §3-룰6                |
-| 7   | `itall/server-serialization`                 | ✅ **구현 완료** (단일 파일, 2026-05-20)                                                                             | `'use client'` 파일에서 destructured prop 1~2 필드만 사용 시 flag · §3-룰7    |
-| 8   | `itall/no-process-env-direct-access`         | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §8 — `process.env` 직접 접근 금지 · §3-룰8         |
-| 9   | `itall/error-tsx-use-client`                 | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §7-1 — error.tsx `"use client"` 누락 검출 · §3-룰9 |
-| 10  | `itall/tanstack-query-key-array`             | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §3-4 — TanStack Query 키 배열 강제 · §3-룰10       |
+| #   | 룰                                           | 상태                                                                                                                 | 비고                                                                                    |
+| --- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 1   | `itall/rerender-use-ref-transient-values`    | ✅ **구현 완료** (v0.3.0, identifier resolution은 v0.4.0)                                                            | 인라인 핸들러 + 같은 파일의 함수 정의 추적                                              |
+| 2   | `itall/async-cheap-condition-before-await`   | ✅ **구현 완료** (v0.5.0)                                                                                            | LogicalExpression(`&&`) 분석                                                            |
+| 3   | `itall/rendering-hydration-suppress-warning` | ✅ **구현 완료** (v0.4.0)                                                                                            | new Date/Math.random/Intl 등 + JSXElement 조상 스택                                     |
+| 4   | `itall/server-parallel-nested-fetching`      | ✅ **구현 완료** (v0.5.0, `tags: ["test-noise"]`)                                                                    | `Promise.all(...map())` 두 단 sequential 변수 추적                                      |
+| 5   | `itall/async-api-routes`                     | ❌ **의도적 미구현** — upstream `react-doctor/server-sequential-independent-await`(+3개부터 `async-parallel`)와 겹침 | 결정 근거는 위 "겹침 정책" · §3-룰5 데시전 레코드                                       |
+| 6   | `itall/rerender-split-combined-hooks`        | ✅ **구현 완료** (useMemo 한정, 2026-05-20)                                                                          | dep array의 disjoint subset만 참조하는 step 분리 권고 · §3-룰6                          |
+| 7   | `itall/server-serialization`                 | ✅ **구현 완료** (단일 파일, 2026-05-20)                                                                             | `'use client'` 파일에서 destructured prop 1~2 필드만 사용 시 flag · §3-룰7              |
+| 8   | `itall/no-process-env-direct-access`         | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §8 — `process.env` 직접 접근 금지 · §3-룰8                   |
+| 9   | `itall/error-tsx-use-client`                 | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §7-1 — error.tsx `"use client"` 누락 검출 · §3-룰9           |
+| 10  | `itall/tanstack-query-key-array`             | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §3-4 — TanStack Query 키 배열 강제 · §3-룰10                 |
+| 11  | `itall/route-segment-explicit-name`          | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §4 — 라우팅 파일 default export 이름 강제 · §3-룰11          |
+| 12  | `itall/no-document-title-mutation`           | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `nextjs.md` §5 — `document.title` 직접 변경 금지 · §3-룰12               |
+| 13  | `itall/component-function-declaration`       | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `react.md` — 컴포넌트 `function` 키워드 강제 · §3-룰13                   |
+| 14  | `itall/no-type-prefix-suffix`                | ✅ **구현 완료** (사내, 2026-05-20)                                                                                  | claude-presets `typescript.md` — `IUser`/`FooType` 같은 마커 접두/접미사 금지 · §3-룰14 |
 
-Vercel HIGH 5/5 + MEDIUM 그룹 C 중 mechanical 2개 + 사내 claude-presets 3개 = **9개 구현, 1개 의도적 미구현**. Vercel 70개 룰 audit은 §0-1·§0-2, 사내 룰 audit은 §0-3. 추가 후보 발굴은 사실상 종료, 다음 우선순위는 운영 관측 결과 기반 `warn`→`error` 승격 또는 룰 비활성 검토.
+Vercel HIGH 5/5 + MEDIUM 그룹 C 중 mechanical 2개 + 사내 claude-presets 7개 = **13개 구현, 1개 의도적 미구현**. Vercel 70개 룰 audit은 §0-1·§0-2, 사내 룰 audit은 §0-3. 추가 후보 발굴은 사실상 종료, 다음 우선순위는 운영 관측 결과 기반 `warn`→`error` 승격 또는 룰 비활성 검토.
 
 ---
 
@@ -167,13 +171,13 @@ Vercel react-best-practices 외에 itall 자체 컨벤션이 [`IT-ALL-Service/pa
 
 ### 분류 요약
 
-| 카테고리                                          | 개수 | 메모                                                                                                                   |
-| ------------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------- |
-| ❌ TS-ESLint / upstream 커버 (제외)               | 13   | `any`, `!`, `@ts-ignore`, 반환 타입, `<img>`, fetch 옵션, ...                                                          |
-| ✅ 사이드카 도입 (이번 PR)                        | 3    | `no-process-env-direct-access`, `error-tsx-use-client`, `tanstack-query-key-array`                                     |
-| 🟢 사이드카 도입 후보 (HIGH lintability, 후속 PR) | 4    | `route-segment-explicit-name`, `no-type-prefix-suffix`, `no-document-title-mutation`, `component-function-declaration` |
-| 🟡 MEDIUM (가능하지만 FP 위험)                    | 3    | 핸들러 네이밍 `handleXxx`/`onXxx`, `as` 단언 화이트리스트, 3단계+ 상위 경로                                            |
-| 🔴 prose-only                                     | ~15+ | "Server Component 기본", "State Colocation", "Composition 우선", ...                                                   |
+| 카테고리                             | 개수 | 메모                                                                                                                   |
+| ------------------------------------ | ---- | ---------------------------------------------------------------------------------------------------------------------- |
+| ❌ TS-ESLint / upstream 커버 (제외)  | 13   | `any`, `!`, `@ts-ignore`, 반환 타입, `<img>`, fetch 옵션, ...                                                          |
+| ✅ 사이드카 도입 Batch 1 (사고 예방) | 3    | `no-process-env-direct-access`, `error-tsx-use-client`, `tanstack-query-key-array`                                     |
+| ✅ 사이드카 도입 Batch 2 (스타일)    | 4    | `route-segment-explicit-name`, `no-document-title-mutation`, `component-function-declaration`, `no-type-prefix-suffix` |
+| 🟡 MEDIUM (가능하지만 FP 위험)       | 3    | 핸들러 네이밍 `handleXxx`/`onXxx`, `as` 단언 화이트리스트, 3단계+ 상위 경로                                            |
+| 🔴 prose-only                        | ~15+ | "Server Component 기본", "State Colocation", "Composition 우선", ...                                                   |
 
 ### ❌ TS-ESLint / upstream에 이미 잡힘 (사이드카에 안 넣음)
 
@@ -193,7 +197,9 @@ Vercel react-best-practices 외에 itall 자체 컨벤션이 [`IT-ALL-Service/pa
 | **`useState + useEffect + fetch` 금지** (§3-4) | upstream **`no-fetch-in-effect`**                                 |
 | Metadata API 사용 (`next/head` 금지 부분)      | upstream `nextjs-missing-metadata`                                |
 
-### ✅ 이번 PR 도입 (3개, 사고 예방·운영 자산 가치 우선)
+### ✅ 사이드카 도입 (7개)
+
+**Batch 1 — 사고 예방·운영 자산 가치 우선 (2026-05-20):**
 
 | 룰                             | 신호                                                       | 사유                                                                            |
 | ------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -201,14 +207,14 @@ Vercel react-best-practices 외에 itall 자체 컨벤션이 [`IT-ALL-Service/pa
 | `error-tsx-use-client`         | `error.tsx` 파일 + `"use client"` directive 누락           | 런타임 crash 예방. 파일명 매칭으로 visitor 비용 거의 없음                       |
 | `tanstack-query-key-array`     | `useQuery/useMutation/queryClient.*` 첫 인자에서 비배열 키 | 흔한 캐시 매칭 실패 버그 예방. spread/identifier/call value는 conservative skip |
 
-### 🟢 후속 PR 후보 (4개)
+**Batch 2 — 라우팅 컨벤션·스타일 강제 (2026-05-20):**
 
-| 룰                               | 신호                                                                 | 우선순위 |
-| -------------------------------- | -------------------------------------------------------------------- | -------- |
-| `route-segment-explicit-name`    | `page.tsx`/`layout.tsx`의 default export 함수 이름이 `Page`/`Layout` | 🟡 중    |
-| `no-type-prefix-suffix`          | `interface IUser`, `type UserType` (`Model`/`Entity`/`Dto`는 허용)   | 🟡 중    |
-| `no-document-title-mutation`     | `document.title = ...` 직접 변경                                     | 🟡 중    |
-| `component-function-declaration` | `const Foo = () => <div/>` (function 키워드 강제)                    | 🟡 중    |
+| 룰                               | 신호                                                                                                                                                   | 사유                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `route-segment-explicit-name`    | `page.tsx`/`layout.tsx`/`loading.tsx`/`not-found.tsx`/`template.tsx`/`default.tsx`의 default export 함수 이름이 `Page`/`Layout`/`Loading` 같은 generic | stack trace·DevTools·Profiler에서 어느 세그먼트인지 식별 가능하도록      |
+| `no-document-title-mutation`     | `document.title = ...` AssignmentExpression                                                                                                            | 크롤러/OG bot은 JS 실행 전 HTML만 읽음 → Metadata API 사용 강제          |
+| `component-function-declaration` | `const Foo = () => <jsx/>` (PascalCase const + ArrowFunction + JSX 반환)                                                                               | React 가이드: stack trace 라벨 · 호이스팅 가독성 · TSX 제네릭 자연스러움 |
+| `no-type-prefix-suffix`          | `interface IUser` / `type FooType` (`Model`/`Entity`/`Dto`는 허용)                                                                                     | TS 컴파일러가 이미 타입임을 앎. 도메인 의미 있는 접미사만 허용           |
 
 ### 🔴 prose-only (lint 불가)
 

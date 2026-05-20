@@ -433,6 +433,178 @@ export function EventList() {
   });
 });
 
+describe("itall/route-segment-explicit-name", () => {
+  it("flags a page.tsx whose default export is named `Page`", async () => {
+    const projectDir = setupReactProject(tempRoot, "route-segment-page-generic", {
+      files: {
+        "src/app/dashboard/page.tsx": `export default function Page() {
+  return <main>Dashboard</main>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "route-segment-explicit-name");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag a page.tsx with a role-revealing function name", async () => {
+    const projectDir = setupReactProject(tempRoot, "route-segment-page-named", {
+      files: {
+        "src/app/dashboard/page.tsx": `export default function DashboardPage() {
+  return <main>Dashboard</main>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "route-segment-explicit-name");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT activate in non-routing files", async () => {
+    const projectDir = setupReactProject(tempRoot, "route-segment-non-routing", {
+      files: {
+        "src/components/page-shell.tsx": `export default function Page() {
+  return <section>Some shell</section>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "route-segment-explicit-name");
+    expect(hits.length).toBe(0);
+  });
+});
+
+describe("itall/no-document-title-mutation", () => {
+  it("flags `document.title = ...` assignment", async () => {
+    const projectDir = setupReactProject(tempRoot, "document-title-mutate", {
+      files: {
+        "src/page.tsx": `import { useEffect } from "react";
+
+export function Inner() {
+  useEffect(() => {
+    document.title = "Manual title";
+  }, []);
+  return <div />;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-document-title-mutation");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag reading document.title", async () => {
+    const projectDir = setupReactProject(tempRoot, "document-title-read", {
+      files: {
+        "src/util.ts": `export function currentTitle(): string {
+  return document.title;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-document-title-mutation");
+    expect(hits.length).toBe(0);
+  });
+});
+
+describe("itall/component-function-declaration", () => {
+  it("flags a Pascal-named arrow component", async () => {
+    const projectDir = setupReactProject(tempRoot, "component-arrow-pascal", {
+      files: {
+        "src/profile.tsx": `export const Profile = ({ name }: { name: string }) => {
+  return <div>{name}</div>;
+};
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "component-function-declaration");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag a function-keyword component", async () => {
+    const projectDir = setupReactProject(tempRoot, "component-function-keyword", {
+      files: {
+        "src/profile.tsx": `export function Profile({ name }: { name: string }) {
+  return <div>{name}</div>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "component-function-declaration");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT flag a Pascal-named const that doesn't return JSX (factory helper)", async () => {
+    const projectDir = setupReactProject(tempRoot, "component-pascal-factory", {
+      files: {
+        "src/factory.ts": `declare function createStore(): { value: number };
+
+export const Store = () => createStore();
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "component-function-declaration");
+    expect(hits.length).toBe(0);
+  });
+});
+
+describe("itall/no-type-prefix-suffix", () => {
+  it("flags an `IUser` interface (forbidden `I` prefix)", async () => {
+    const projectDir = setupReactProject(tempRoot, "type-prefix-iuser", {
+      files: {
+        "src/types.ts": `export interface IUser {
+  id: string;
+  name: string;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-type-prefix-suffix");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("flags a `UserType` type alias (forbidden `Type` suffix)", async () => {
+    const projectDir = setupReactProject(tempRoot, "type-suffix-type", {
+      files: {
+        "src/types.ts": `export type UserType = {
+  id: string;
+  name: string;
+};
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-type-prefix-suffix");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag a plain `User` interface", async () => {
+    const projectDir = setupReactProject(tempRoot, "type-plain-user", {
+      files: {
+        "src/types.ts": `export interface User {
+  id: string;
+  name: string;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-type-prefix-suffix");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT flag domain-suffixed `UserDto` / `UserEntity` / `UserModel`", async () => {
+    const projectDir = setupReactProject(tempRoot, "type-domain-suffix", {
+      files: {
+        "src/types.ts": `export interface UserDto { id: string }
+export interface UserEntity { id: string; createdAt: Date }
+export type UserModel = { id: string; name: string };
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "no-type-prefix-suffix");
+    expect(hits.length).toBe(0);
+  });
+});
+
 // NOTE: `async-api-routes` was deliberately NOT shipped — upstream's
 // `react-doctor/server-sequential-independent-await` already covers
 // the same pattern across every async function body, and a sidecar
