@@ -84,6 +84,23 @@ runs:
         registry-url: "https://npm.pkg.github.com"
         scope: "@it-all-service"
 
+    # Direct ~/.npmrc write — setup-node@v4 already places an .npmrc at
+    # `$RUNNER_TEMP/.npmrc` with `_authToken=${NODE_AUTH_TOKEN}`, but
+    # the env-variable expansion is not reliable when npm CLI is
+    # invoked via `npx -y` from inside a composite action (observed
+    # 401 against `npm.pkg.github.com` even though curl with the same
+    # token returns 200). Writing the resolved token into `~/.npmrc`
+    # bypasses the placeholder path and authenticates every package
+    # manager (npm/pnpm/yarn) that reads user-level npmrc.
+    - name: Configure GitHub Packages auth
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
+      run: |
+        echo "@it-all-service:registry=https://npm.pkg.github.com" >> "$HOME/.npmrc"
+        echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"
+        echo "always-auth=true" >> "$HOME/.npmrc"
+
     # diff mode preparation — when triggered by a pull_request event,
     # ensure the base ref is fetched locally so the CLI's diff resolver
     # can compute `git diff <base>...HEAD`. We keep the argument
