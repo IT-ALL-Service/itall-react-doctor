@@ -180,6 +180,100 @@ export function Dashboard({ products, filterId, multiplier }: Props) {
   });
 });
 
+describe("itall/server-serialization", () => {
+  it("flags a 'use client' component reading just 1 field of a destructured object prop", async () => {
+    const projectDir = setupReactProject(tempRoot, "server-serialization-one-field", {
+      files: {
+        "src/profile.tsx": `"use client";
+
+interface User { id: string; name: string; email: string; avatarUrl: string }
+
+export function Profile({ user }: { user: User }) {
+  return <div>{user.name}</div>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "server-serialization");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("flags reading 2 distinct fields", async () => {
+    const projectDir = setupReactProject(tempRoot, "server-serialization-two-fields", {
+      files: {
+        "src/avatar.tsx": `"use client";
+
+interface User { id: string; name: string; avatarUrl: string }
+
+export function Avatar({ user }: { user: User }) {
+  return <img src={user.avatarUrl} alt={user.name} />;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "server-serialization");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag a Server Component (no 'use client' directive)", async () => {
+    const projectDir = setupReactProject(tempRoot, "server-serialization-no-client", {
+      files: {
+        "src/server-profile.tsx": `interface User { id: string; name: string; email: string }
+
+export function Profile({ user }: { user: User }) {
+  return <div>{user.name}</div>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "server-serialization");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT flag a component reading 3+ fields (legitimate prop bag)", async () => {
+    const projectDir = setupReactProject(tempRoot, "server-serialization-many-fields", {
+      files: {
+        "src/card.tsx": `"use client";
+
+interface User { name: string; email: string; bio: string; avatarUrl: string }
+
+export function Card({ user }: { user: User }) {
+  return (
+    <div>
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+      <p>{user.bio}</p>
+    </div>
+  );
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "server-serialization");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT flag when the prop is spread or passed whole", async () => {
+    const projectDir = setupReactProject(tempRoot, "server-serialization-spread", {
+      files: {
+        "src/forward.tsx": `"use client";
+
+interface User { id: string; name: string }
+
+declare function audit(payload: object): void;
+
+export function Forward({ user }: { user: User }) {
+  audit(user);
+  return <div data-id={user.id}>...</div>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "server-serialization");
+    expect(hits.length).toBe(0);
+  });
+});
+
 // NOTE: `async-api-routes` was deliberately NOT shipped — upstream's
 // `react-doctor/server-sequential-independent-await` already covers
 // the same pattern across every async function body, and a sidecar

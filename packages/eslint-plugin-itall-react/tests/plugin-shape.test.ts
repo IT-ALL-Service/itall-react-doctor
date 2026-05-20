@@ -121,4 +121,25 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     });
     expect(typeof visitor.CallExpression).toBe("function");
   });
+
+  it("registers the server-serialization rule", () => {
+    const rule = plugin.rules["server-serialization"];
+    expect(rule).toBeDefined();
+    expect(rule.meta.type).toBe("problem");
+    expect(rule.meta.docs.recommended).toBe(true);
+    expect(rule.meta.docs.description).toContain("use client");
+    expect(typeof rule.create).toBe("function");
+  });
+
+  it("server-serialization visitor covers Program + function shapes", () => {
+    const rule = plugin.rules["server-serialization"];
+    const visitor = rule.create({
+      report: () => {},
+      getFilename: () => "test.tsx",
+    });
+    expect(typeof visitor.Program).toBe("function");
+    expect(typeof visitor.FunctionDeclaration).toBe("function");
+    expect(typeof visitor.FunctionExpression).toBe("function");
+    expect(typeof visitor.ArrowFunctionExpression).toBe("function");
+  });
 });
