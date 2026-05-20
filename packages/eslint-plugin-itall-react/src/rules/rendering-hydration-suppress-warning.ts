@@ -9,27 +9,11 @@ import type { EslintRule, EslintRuleContext, EslintRuleVisitor } from "../types.
 
 interface AstNode {
   type: string;
+  parent?: AstNode;
   [key: string]: unknown;
 }
 
-const walkSubtree = (
-  node: AstNode | undefined | null,
-  visit: (n: AstNode) => boolean | void,
-): void => {
-  if (!node || typeof node !== "object" || typeof node.type !== "string") return;
-  if (visit(node) === false) return;
-  for (const key of Object.keys(node)) {
-    if (key === "parent" || key === "loc" || key === "range") continue;
-    const value = node[key];
-    if (Array.isArray(value)) {
-      for (const child of value) walkSubtree(child as AstNode, visit);
-    } else if (value && typeof value === "object" && typeof (value as AstNode).type === "string") {
-      walkSubtree(value as AstNode, visit);
-    }
-  }
-};
-
-const memberObjectName = (node: AstNode): string | null => {
+const memberObjectName = (node: AstNode | undefined | null): string | null => {
   if (!node || typeof node !== "object") return null;
   if (node.type === "Identifier") return (node.name as string) ?? null;
   return null;
@@ -41,32 +25,30 @@ const memberPropertyName = (node: AstNode): string | null => {
   return (prop.name as string) ?? null;
 };
 
-// Identifies a single AST node as a non-deterministic source. Returns
-// a short label used in the diagnostic message, or null if the node
-// is deterministic / unrelated.
-const classifyNonDeterministic = (node: AstNode): string | null => {
-  if (node.type === "NewExpression") {
-    const callee = node.callee as AstNode | undefined;
-    if (!callee) return null;
-    if (callee.type === "Identifier" && callee.name === "Date") return "new Date()";
-    if (callee.type === "MemberExpression" && memberObjectName(callee) === "Intl") {
-      const name = memberPropertyName(callee);
-      return name ? `new Intl.${name}()` : "new Intl.*()";
-    }
+// Returns a short label if the node is a recognised non-deterministic
+// source, else null. Splits cleanly into NewExpression (constructors)
+// and CallExpression (methods).
+const classifyNewExpression = (node: AstNode): string | null => {
+  const callee = node.callee as AstNode | undefined;
+  if (!callee) return null;
+  if (callee.type === "Identifier" && callee.name === "Date") return "new Date()";
+  if (callee.type === "MemberExpression" && memberObjectName(callee.object as AstNode) === "Intl") {
+    const name = memberPropertyName(callee);
+    return name ? `new Intl.${name}()` : "new Intl.*()";
   }
-  if (node.type === "CallExpression") {
-    const callee = node.callee as AstNode | undefined;
-    if (!callee) return null;
-    if (callee.type === "MemberExpression") {
-      const object = memberObjectName(callee);
-      const property = memberPropertyName(callee);
-      if (!property) return null;
-      if (object === "Date" && property === "now") return "Date.now()";
-      if (object === "Math" && property === "random") return "Math.random()";
-      if (object === "crypto" && property === "randomUUID") return "crypto.randomUUID()";
-      if (object === "Intl") return `Intl.${property}()`;
-    }
-  }
+  return null;
+};
+
+const classifyCallExpression = (node: AstNode): string | null => {
+  const callee = node.callee as AstNode | undefined;
+  if (!callee || callee.type !== "MemberExpression") return null;
+  const object = memberObjectName(callee.object as AstNode);
+  const property = memberPropertyName(callee);
+  if (!property) return null;
+  if (object === "Date" && property === "now") return "Date.now()";
+  if (object === "Math" && property === "random") return "Math.random()";
+  if (object === "crypto" && property === "randomUUID") return "crypto.randomUUID()";
+  if (object === "Intl") return `Intl.${property}()`;
   return null;
 };
 
@@ -84,24 +66,51 @@ const hasSuppressHydrationAttribute = (jsxElement: AstNode): boolean => {
   return false;
 };
 
-interface NonDeterministicHit {
-  node: AstNode;
-  label: string;
+interface JsxContextCheck {
+  insideJsxRender: boolean;
+  suppressed: boolean;
 }
 
-const collectNonDeterministicHits = (expressionRoot: AstNode): NonDeterministicHit[] => {
-  const hits: NonDeterministicHit[] = [];
-  walkSubtree(expressionRoot, (innerNode) => {
-    const label = classifyNonDeterministic(innerNode);
-    if (label) {
-      hits.push({ node: innerNode, label });
-      // Do not descend further; the outer expression already represents
-      // the violation site, and child nodes (e.g., args) often produce
-      // redundant matches.
-      return false;
+// Walks the parent chain from `start` to determine:
+// - whether this expression is rendered into JSX synchronously (i.e.
+//   reached a JSXExpressionContainer or JSXAttribute value before any
+//   function-like boundary), and
+// - whether any enclosing JSX element (or ancestor) carries
+//   `suppressHydrationWarning`.
+// Bails to `insideJsxRender: false` when it crosses a function-like
+// node (ArrowFunctionExpression, FunctionExpression, FunctionDeclaration)
+// because the expression only runs when the function is invoked, not
+// at render time.
+const inspectJsxContext = (start: AstNode): JsxContextCheck => {
+  let suppressed = false;
+  let insideJsxRender = false;
+  let cursor: AstNode | undefined = start.parent;
+  while (cursor) {
+    const type = cursor.type;
+    if (
+      !insideJsxRender &&
+      (type === "ArrowFunctionExpression" ||
+        type === "FunctionExpression" ||
+        type === "FunctionDeclaration")
+    ) {
+      // Crossed a function boundary BEFORE reaching a JSX render site
+      // — the expression lives inside a nested callback/handler and
+      // does not execute at render time, so the rule should skip it.
+      // (Once we are inside JSX render, the surrounding component
+      // function is just the natural enclosing scope and is fine.)
+      return { insideJsxRender: false, suppressed: false };
     }
-  });
-  return hits;
+    if (type === "JSXExpressionContainer" || type === "JSXSpreadAttribute") {
+      insideJsxRender = true;
+    }
+    if (type === "JSXElement") {
+      if (hasSuppressHydrationAttribute(cursor)) {
+        suppressed = true;
+      }
+    }
+    cursor = cursor.parent;
+  }
+  return { insideJsxRender, suppressed };
 };
 
 const buildMessage = (label: string): string =>
@@ -119,38 +128,23 @@ export const renderingHydrationSuppressWarning: EslintRule = {
     schema: [],
   },
   create: (context: EslintRuleContext): EslintRuleVisitor => {
-    // Stack of `suppressHydrationWarning` flags for currently-open JSX
-    // elements. We only need to know if ANY ancestor in the open chain
-    // suppresses, so each entry stores the running "ancestor suppresses
-    // or self suppresses" boolean. Top of stack is true iff at least
-    // one ancestor JSX element has the attribute.
-    const suppressionStack: boolean[] = [];
+    const reportIfFlagged = (node: AstNode, label: string): void => {
+      const ctx = inspectJsxContext(node);
+      if (!ctx.insideJsxRender) return;
+      if (ctx.suppressed) return;
+      context.report({ node, message: buildMessage(label) });
+    };
 
     return {
-      JSXElement(node) {
-        const element = node as AstNode;
-        const selfSuppresses = hasSuppressHydrationAttribute(element);
-        const ancestorSuppresses = suppressionStack[suppressionStack.length - 1] === true;
-        suppressionStack.push(selfSuppresses || ancestorSuppresses);
+      NewExpression(node) {
+        const astNode = node as AstNode;
+        const label = classifyNewExpression(astNode);
+        if (label) reportIfFlagged(astNode, label);
       },
-      "JSXElement:exit"() {
-        suppressionStack.pop();
-      },
-      JSXExpressionContainer(node) {
-        // Suppression is satisfied iff any ancestor JSXElement in the
-        // open chain (or its self) carries `suppressHydrationWarning`.
-        if (suppressionStack[suppressionStack.length - 1] === true) return;
-        const container = node as AstNode;
-        const expression = container.expression as AstNode | undefined;
-        if (!expression) return;
-        // Skip JSXEmptyExpression (e.g. `{/* comment */}`).
-        if (expression.type === "JSXEmptyExpression") return;
-        for (const hit of collectNonDeterministicHits(expression)) {
-          context.report({
-            node: hit.node,
-            message: buildMessage(hit.label),
-          });
-        }
+      CallExpression(node) {
+        const astNode = node as AstNode;
+        const label = classifyCallExpression(astNode);
+        if (label) reportIfFlagged(astNode, label);
       },
     };
   },

@@ -1,6 +1,6 @@
 {
   "name": "@it-all-service/eslint-plugin-itall-react",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Team-specific React/Next.js lint rules consumed by @it-all-service/react-doctor",
   "keywords": [
     "eslint",
