@@ -1,0 +1,213 @@
+name: "itall react-doctor"
+description: |
+  Run `@it-all-service/react-doctor` against a consumer repo and post the
+  findings as a sticky comment on the triggering pull request. The comment
+  is identified by the marker `<!-- itall-react-doctor -->` so subsequent
+  runs update the same comment instead of stacking new ones.
+
+  Pin via the moving `@v0` tag (published by `.github/workflows/publish.yml`
+  on every v0.x release) so the consumer workflow doesn't need editing on
+  each new release.
+branding:
+  icon: "activity"
+  color: "blue"
+
+inputs:
+  directory:
+    description: "Project directory to scan (default: repo root)."
+    default: "."
+  project:
+    description: "Workspace project(s) to scan when the repo is a monorepo (comma-separated)."
+    required: false
+  diff:
+    description: |
+      Base branch for diff mode (e.g. `main`). When set on a pull_request event the
+      action restricts the scan to files changed against this branch and skips
+      `git checkout` work the runner already did.
+    required: false
+  fail-on:
+    description: |
+      Exit code policy for diagnostics in the scanned files: `error` (default), `warning`, `none`.
+      Gates on individual diagnostics — combine with `diff` for regression-only gating.
+    default: "error"
+  annotations:
+    description: |
+      Emit diagnostics as GitHub Actions annotation workflow commands so they
+      surface inline in the PR's "Files changed" view. Combined with the
+      sticky comment, you get both inline + summary in one CI step.
+    default: "false"
+  offline:
+    description: |
+      Skip the react.doctor scoring API and calculate the score locally
+      (recommended for internal forks; default `true`).
+    default: "true"
+  github-token:
+    description: |
+      Token used (1) to install the private `@it-all-service/react-doctor`
+      package from GitHub Packages and (2) to post the PR comment. The
+      consumer workflow should pass `${{ secrets.GITHUB_TOKEN }}` — the
+      default workflow token already has `packages:read` for org-internal
+      packages and `pull-requests:write` when the workflow grants it.
+    required: true
+  node-version:
+    description: "Node.js version to use."
+    default: "22"
+  react-doctor-version:
+    description: |
+      Version of `@it-all-service/react-doctor` to install (npm dist-tag or
+      explicit semver). Pin to a tag (`v0.5.0`) in production; `latest` is
+      fine for trying out the action.
+    default: "latest"
+
+outputs:
+  score:
+    description: "Health score (0-100) from `react-doctor --score`."
+    value: ${{ steps.score.outputs.score }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: "https://npm.pkg.github.com"
+        scope: "@it-all-service"
+
+    # Authenticate npm for the @it-all-service scope so `npx` (and any
+    # transient pnpm/yarn invocation the consumer kicks off) can pull
+    # the package from GitHub Packages. The token lives only in this
+    # job's env — the file written by `setup-node` is scoped to the
+    # runner workspace and is wiped at job end.
+    - name: Configure GitHub Packages auth
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        echo "registry=https://registry.npmjs.org/" >> "$HOME/.npmrc"
+        echo "@it-all-service:registry=https://npm.pkg.github.com" >> "$HOME/.npmrc"
+        echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"
+
+    # diff mode preparation — when triggered by a pull_request event,
+    # ensure the base ref is fetched locally so the CLI's diff resolver
+    # can compute `git diff <base>...HEAD`. We keep the argument
+    # validation upstream did so a malicious `diff:` input can't slip a
+    # flag into the `git fetch` command.
+    - if: ${{ inputs.diff != '' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        DIFF_BASE: ${{ inputs.diff }}
+        HEAD_REF: ${{ github.head_ref }}
+      run: |
+        case "$DIFF_BASE" in -* ) echo "::error::diff input cannot start with -"; exit 1 ;; esac
+        case "$HEAD_REF" in -* ) echo "::error::head_ref cannot start with -"; exit 1 ;; esac
+        git fetch origin "$DIFF_BASE" && git branch -f "$DIFF_BASE" FETCH_HEAD 2>/dev/null || true
+        git checkout "$HEAD_REF" 2>/dev/null || true
+
+    - name: Run react-doctor
+      shell: bash
+      env:
+        NO_COLOR: "1"
+        INPUT_DIRECTORY: ${{ inputs.directory }}
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_DIFF: ${{ inputs.diff }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_ANNOTATIONS: ${{ inputs.annotations }}
+        INPUT_OFFLINE: ${{ inputs.offline }}
+        INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
+        RUNNER_TEMP: ${{ runner.temp }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+      run: |
+        FLAGS=("--fail-on" "$INPUT_FAIL_ON" "--yes" "--verbose")
+        if [ -n "$INPUT_PROJECT" ]; then FLAGS+=("--project" "$INPUT_PROJECT"); fi
+        if [ -n "$INPUT_DIFF" ]; then FLAGS+=("--diff" "$INPUT_DIFF"); fi
+        if [ "$INPUT_OFFLINE" = "true" ]; then FLAGS+=("--offline"); fi
+        if [ "$INPUT_ANNOTATIONS" = "true" ]; then FLAGS+=("--annotations"); fi
+
+        OUTPUT_FILE="${RUNNER_TEMP:-/tmp}/itall-react-doctor-output-${GITHUB_RUN_ID:-$$}.txt"
+        echo "REACT_DOCTOR_OUTPUT_FILE=$OUTPUT_FILE" >> "$GITHUB_ENV"
+        RAW_FILE="${RUNNER_TEMP:-/tmp}/itall-react-doctor-raw-${GITHUB_RUN_ID:-$$}.txt"
+
+        # --pr-comment trims weak-signal categories (tag `"design"`) so
+        # the sticky comment focuses on actionable findings. Tee the
+        # output so it also lands in the step log for forensic
+        # debugging. PIPESTATUS preserves the CLI's exit code through
+        # the `tee` pipe.
+        set +e
+        npx -y "@it-all-service/react-doctor@$INPUT_RD_VERSION" \
+          "$INPUT_DIRECTORY" "${FLAGS[@]}" --pr-comment | tee "$RAW_FILE"
+        PIPELINE_EXIT_CODES=("${PIPESTATUS[@]}")
+        set -e
+
+        # Strip annotation workflow commands from the comment body —
+        # the runner already consumed them from the live step log.
+        sed -E '/^::(error|warning) /d' "$RAW_FILE" > "$OUTPUT_FILE"
+        if [ "${PIPELINE_EXIT_CODES[1]}" -ne 0 ]; then exit "${PIPELINE_EXIT_CODES[1]}"; fi
+        exit "${PIPELINE_EXIT_CODES[0]}"
+
+    # Collect the score separately so it ships in the sticky comment
+    # even when --pr-comment focuses on findings. `--fail-on none`
+    # prevents older CLI builds from exiting non-zero on a Needs Work
+    # score under `set -e -o pipefail`.
+    - id: score
+      if: always()
+      shell: bash
+      env:
+        INPUT_DIRECTORY: ${{ inputs.directory }}
+        INPUT_OFFLINE: ${{ inputs.offline }}
+        INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
+      run: |
+        SCORE_ARGS=("$INPUT_DIRECTORY" "--score" "--fail-on" "none" "--yes")
+        if [ "$INPUT_OFFLINE" = "true" ]; then SCORE_ARGS+=("--offline"); fi
+        SCORE=$(npx -y "@it-all-service/react-doctor@$INPUT_RD_VERSION" \
+          "${SCORE_ARGS[@]}" 2>/dev/null | tail -1 | tr -d '[:space:]') || true
+        if [[ -n "$SCORE" && "$SCORE" =~ ^[0-9]+$ ]]; then
+          echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Sticky comment update. The marker is namespaced (`itall-react-doctor`)
+    # so we don't collide with upstream `react-doctor` comments if a repo
+    # ever ran both. `always()` ensures the comment posts even when the
+    # CLI exited non-zero on `--fail-on error` — the developer needs to
+    # see the findings to fix them.
+    - if: ${{ always() && github.event_name == 'pull_request' }}
+      uses: actions/github-script@v7
+      env:
+        REACT_DOCTOR_OUTPUT_FILE: ${{ env.REACT_DOCTOR_OUTPUT_FILE }}
+        REACT_DOCTOR_SCORE: ${{ steps.score.outputs.score }}
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require("fs");
+          const path = process.env.REACT_DOCTOR_OUTPUT_FILE;
+          if (!path || !fs.existsSync(path)) return;
+          const output = fs.readFileSync(path, "utf8").trim();
+          if (!output) return;
+
+          const score = process.env.REACT_DOCTOR_SCORE;
+          const scoreLine =
+            score && /^[0-9]+$/.test(score)
+              ? `**Score:** \`${score}\` / 100\n\n`
+              : "";
+
+          const marker = "<!-- itall-react-doctor -->";
+          const fence = "````";
+          const body = `${marker}\n## itall React Doctor\n\n${scoreLine}${fence}\n${output}\n${fence}`;
+
+          const { data: comments } = await github.rest.issues.listComments({
+            ...context.repo,
+            issue_number: context.issue.number,
+          });
+          const prev = comments.find((c) => c.body?.startsWith(marker));
+          if (prev) {
+            await github.rest.issues.updateComment({
+              ...context.repo,
+              comment_id: prev.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          }

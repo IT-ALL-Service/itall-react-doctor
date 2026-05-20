@@ -21,7 +21,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # `contents: write` is required for the moving major-tag step at
+      # the bottom (force-push `v<major>` to the released commit so
+      # consumers can pin `uses: ...@v0` and pick up patch releases
+      # without editing their workflow).
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v5
@@ -76,3 +80,30 @@ jobs:
           else
             pnpm publish --no-git-checks
           fi
+
+      # Move the major-version tag (`v0`, `v1`, …) to the released
+      # commit so consumers can pin our composite action with
+      # `uses: IT-ALL-Service/itall-react-doctor@v0` and pick up
+      # patch / minor releases without editing their workflow.
+      # Skipped on `workflow_dispatch` (re-publish from an older
+      # commit shouldn't claim the major tag) and on dry-run.
+      - name: Update major moving tag
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MAJOR="v${TAG_VERSION%%.*}"
+          # Pre-release tags like `v0.5.0-rc.1` would have MAJOR end with
+          # the suffix — strip anything after the first non-digit so we
+          # never write `v0-rc` etc.
+          MAJOR="$(echo "$MAJOR" | sed -E 's/^v([0-9]+).*/v\1/')"
+          if [ -z "$MAJOR" ]; then
+            echo "::warning::Could not derive major tag from $GITHUB_REF_NAME"
+            exit 0
+          fi
+          echo "Updating moving tag $MAJOR → $GITHUB_SHA"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$MAJOR" "$GITHUB_SHA"
+          git push origin "$MAJOR" --force
