@@ -97,6 +97,12 @@ export async function loadAll(items: string[]) {
     const hits = await collectRuleHits(projectDir, "server-parallel-nested-fetching");
     expect(hits.length).toBe(0);
   });
+
+  // tags-based auto-suppress runs in `mergeAndFilterDiagnostics`, not
+  // inside `runOxlint` (which `collectRuleHits` uses). The behavioral
+  // verification lives in `tests/merge-and-filter-diagnostics.test.ts`
+  // — kept there alongside the upstream `async-parallel` test-noise
+  // cases for parity.
 });
 
 // NOTE: `async-api-routes` was deliberately NOT shipped — upstream's

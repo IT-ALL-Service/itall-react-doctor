@@ -144,3 +144,76 @@ describe("mergeAndFilterDiagnostics — test-noise tag auto-suppression for asyn
     expect(filtered).toHaveLength(1);
   });
 });
+
+// Mirror coverage for sidecar (`@it-all-service/eslint-plugin-itall-react`)
+// rules tagged `test-noise`. `server-parallel-nested-fetching` ships with
+// the tag because Promise.all-of-map patterns are common in fixture
+// setup; this section locks in that sidecar diagnostics flow through
+// the same auto-suppress path as upstream `react-doctor` rules.
+describe("mergeAndFilterDiagnostics — test-noise tag auto-suppression for sidecar rules", () => {
+  const projectDir = path.join(tempRoot, "test-noise-server-parallel-nested");
+  const readNoop = () => null;
+  const sidecarDiagnostic = (filePath: string): Diagnostic =>
+    buildDiagnostic({
+      plugin: "itall",
+      rule: "server-parallel-nested-fetching",
+      filePath,
+      line: 1,
+      column: 1,
+    });
+
+  it("auto-suppresses sidecar server-parallel-nested-fetching in `*.test.ts` files", () => {
+    clearAutoSuppressionCaches();
+    const filtered = mergeAndFilterDiagnostics(
+      [sidecarDiagnostic("src/data.test.ts")],
+      projectDir,
+      null,
+      readNoop,
+      { respectInlineDisables: false },
+    );
+    expect(filtered).toHaveLength(0);
+  });
+
+  it("auto-suppresses sidecar diagnostics inside `__tests__/` directories", () => {
+    clearAutoSuppressionCaches();
+    const filtered = mergeAndFilterDiagnostics(
+      [sidecarDiagnostic("src/__tests__/data-loader.ts")],
+      projectDir,
+      null,
+      readNoop,
+      { respectInlineDisables: false },
+    );
+    expect(filtered).toHaveLength(0);
+  });
+
+  it("still surfaces sidecar diagnostics in plain production files", () => {
+    clearAutoSuppressionCaches();
+    const filtered = mergeAndFilterDiagnostics(
+      [sidecarDiagnostic("src/server/load-dashboard.ts")],
+      projectDir,
+      null,
+      readNoop,
+      { respectInlineDisables: false },
+    );
+    expect(filtered).toHaveLength(1);
+  });
+
+  it("does NOT auto-suppress sidecar rules that lack the test-noise tag", () => {
+    clearAutoSuppressionCaches();
+    const untaggedSidecarDiagnostic = buildDiagnostic({
+      plugin: "itall",
+      rule: "async-cheap-condition-before-await",
+      filePath: "src/data.test.ts",
+      line: 1,
+      column: 1,
+    });
+    const filtered = mergeAndFilterDiagnostics(
+      [untaggedSidecarDiagnostic],
+      projectDir,
+      null,
+      readNoop,
+      { respectInlineDisables: false },
+    );
+    expect(filtered).toHaveLength(1);
+  });
+});

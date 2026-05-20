@@ -1,4 +1,5 @@
-import type { EslintRule, EslintRuleContext, EslintRuleVisitor } from "../types.js";
+import { defineItallRule } from "../define-itall-rule.js";
+import type { EslintRuleContext, EslintRuleVisitor } from "../types.js";
 
 // Anti-pattern: non-deterministic expressions (current time, random
 // values, locale-sensitive formatting) rendered directly inside JSX
@@ -116,7 +117,9 @@ const inspectJsxContext = (start: AstNode): JsxContextCheck => {
 const buildMessage = (label: string): string =>
   `Wrap \`${label}\` in an element with \`suppressHydrationWarning\` — server/client outputs will diverge here and noisy hydration warnings hide real bugs.`;
 
-export const renderingHydrationSuppressWarning: EslintRule = {
+export const renderingHydrationSuppressWarning = defineItallRule({
+  id: "rendering-hydration-suppress-warning",
+  defaultSeverity: "warn",
   meta: {
     type: "problem",
     docs: {
@@ -148,6 +151,6 @@ export const renderingHydrationSuppressWarning: EslintRule = {
       },
     };
   },
-};
+});
 
 export default renderingHydrationSuppressWarning;

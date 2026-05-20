@@ -1,4 +1,5 @@
-import type { EslintRule, EslintRuleContext, EslintRuleVisitor } from "../types.js";
+import { defineItallRule } from "../define-itall-rule.js";
+import type { EslintRuleContext, EslintRuleVisitor } from "../types.js";
 
 // Event names emitted at very high frequency. setState in handlers
 // attached to these listeners forces a React render on every event,
@@ -186,7 +187,9 @@ const findSetterCallsInHandlerBody = (
 const buildMessage = (eventName: string, setter: string): string =>
   `Avoid calling \`${setter}\` (useState setter) inside a high-frequency \`${eventName}\` handler — it forces a render on every event. Use \`useRef\` for transient values and mutate the DOM directly.`;
 
-export const rerenderUseRefTransientValues: EslintRule = {
+export const rerenderUseRefTransientValues = defineItallRule({
+  id: "rerender-use-ref-transient-values",
+  defaultSeverity: "warn",
   meta: {
     type: "problem",
     docs: {
@@ -245,6 +248,6 @@ export const rerenderUseRefTransientValues: EslintRule = {
       },
     };
   },
-};
+});
 
 export default rerenderUseRefTransientValues;
