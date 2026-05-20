@@ -1,5 +1,7 @@
 import type { ProjectInfo } from "@react-doctor/types";
 import { isTailwindAtLeast, parseTailwindMajorMinor } from "@react-doctor/project-info";
+import type { OxlintRuleSeverity } from "oxlint-plugin-react-doctor";
+import { ITALL_REACT_RULE_METADATA } from "./itall-rules.gen.js";
 
 export const buildCapabilities = (project: ProjectInfo): ReadonlySet<string> => {
   const capabilities = new Set<string>();
@@ -60,4 +62,31 @@ export const shouldEnableRule = (
     }
   }
   return true;
+};
+
+// Filters a namespaced itall-rule severity map (`itall/<key>` → severity)
+// down to the rules whose `requires` capabilities are all satisfied AND
+// whose `tags` do not collide with `ignoredTags`. Same `shouldEnableRule`
+// path upstream react-doctor rules use, so behavior across the two
+// rule populations is identical — preventing the "sidecar fires in
+// irrelevant context" / "sidecar fires in test-noise scope" classes of
+// false positive at config-build time.
+export const filterItallRulesByCapabilities = (
+  rules: Record<string, OxlintRuleSeverity>,
+  capabilities: ReadonlySet<string>,
+  ignoredTags: ReadonlySet<string>,
+): Record<string, OxlintRuleSeverity> => {
+  const filtered: Record<string, OxlintRuleSeverity> = {};
+  for (const [ruleKey, severity] of Object.entries(rules)) {
+    const meta = ITALL_REACT_RULE_METADATA[ruleKey];
+    if (!meta) {
+      // Rule not in our metadata table — keep as-is to avoid silently
+      // dropping unknown rule keys that may flow from severity overrides.
+      filtered[ruleKey] = severity;
+      continue;
+    }
+    if (!shouldEnableRule(meta.requires, meta.tags, capabilities, ignoredTags)) continue;
+    filtered[ruleKey] = severity;
+  }
+  return filtered;
 };
