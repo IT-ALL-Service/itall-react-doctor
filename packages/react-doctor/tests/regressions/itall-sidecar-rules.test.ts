@@ -105,6 +105,81 @@ export async function loadAll(items: string[]) {
   // cases for parity.
 });
 
+describe("itall/rerender-split-combined-hooks", () => {
+  it("flags a useMemo body whose two steps have disjoint dep subsets", async () => {
+    const projectDir = setupReactProject(tempRoot, "split-combined-hooks-fire", {
+      files: {
+        "src/products.tsx": `import { useMemo } from "react";
+
+interface Product { category: string; price: number }
+interface Props { products: Product[]; category: string; sortOrder: "asc" | "desc" }
+
+export function ProductList({ products, category, sortOrder }: Props) {
+  const sortedProducts = useMemo(() => {
+    const filtered = products.filter((p) => p.category === category);
+    const sorted = filtered.toSorted((a, b) =>
+      sortOrder === "asc" ? a.price - b.price : b.price - a.price,
+    );
+    return sorted;
+  }, [products, category, sortOrder]);
+
+  return <ul>{sortedProducts.map((p) => <li key={p.category}>{p.price}</li>)}</ul>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "rerender-split-combined-hooks");
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("does NOT flag a useMemo whose single step uses every dep", async () => {
+    const projectDir = setupReactProject(tempRoot, "split-combined-hooks-single", {
+      files: {
+        "src/total.tsx": `import { useMemo } from "react";
+
+interface Props { products: { price: number }[]; taxRate: number }
+
+export function Total({ products, taxRate }: Props) {
+  const total = useMemo(
+    () => products.reduce((sum, p) => sum + p.price, 0) * (1 + taxRate),
+    [products, taxRate],
+  );
+
+  return <div>{total}</div>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "rerender-split-combined-hooks");
+    expect(hits.length).toBe(0);
+  });
+
+  it("does NOT flag a useMemo whose steps share at least one dep (non-disjoint)", async () => {
+    const projectDir = setupReactProject(tempRoot, "split-combined-hooks-overlapping", {
+      files: {
+        "src/dashboard.tsx": `import { useMemo } from "react";
+
+interface Props { products: { id: string; price: number }[]; filterId: string; multiplier: number }
+
+export function Dashboard({ products, filterId, multiplier }: Props) {
+  // Both steps reference \`products\` — the dep subsets are not
+  // disjoint, so splitting would not avoid any recompute.
+  const summary = useMemo(() => {
+    const matched = products.find((p) => p.id === filterId);
+    const adjustedTotal = products.reduce((sum, p) => sum + p.price, 0) * multiplier;
+    return { matched, adjustedTotal };
+  }, [products, filterId, multiplier]);
+
+  return <pre>{JSON.stringify(summary)}</pre>;
+}
+`,
+      },
+    });
+    const hits = await collectRuleHits(projectDir, "rerender-split-combined-hooks");
+    expect(hits.length).toBe(0);
+  });
+});
+
 // NOTE: `async-api-routes` was deliberately NOT shipped — upstream's
 // `react-doctor/server-sequential-independent-await` already covers
 // the same pattern across every async function body, and a sidecar
