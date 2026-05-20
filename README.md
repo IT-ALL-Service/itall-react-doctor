@@ -49,7 +49,13 @@ pnpm format:check
 
 ## 릴리스
 
-`Publish to GitHub Packages` 워크플로(`.github/workflows/publish.yml`)를 GitHub Actions UI에서 수동 트리거한다. `dry-run` 옵션으로 검증한 뒤 실제 publish를 돌린다. 사이드카가 먼저, CLI가 나중에 publish 되도록 워크플로가 순서를 보장한다.
+기본 플로우는 **tag push 트리거**다.
+
+1. PR에서 두 패키지(`packages/react-doctor`, `packages/eslint-plugin-itall-react`)의 `package.json` version을 동일하게 bump하고 머지.
+2. GitHub UI에서 **Releases → Draft a new release** → 태그명 `v<버전>`(예: `v0.3.0-itall.1`) → 노트 작성 → **Publish release**.
+3. 태그 push가 `.github/workflows/publish.yml`을 자동 트리거한다. 워크플로는 태그와 `packages/react-doctor`의 version이 일치하는지 먼저 검증한 뒤, 사이드카 → CLI 순서로 publish.
+
+ad-hoc/재시도가 필요하면 동일 워크플로를 `workflow_dispatch`로 수동 트리거할 수 있고, 그 경우에 한해 `dry-run` 옵션을 지원한다.
 
 ## upstream과의 차이
 
