@@ -8,6 +8,7 @@ import { renderingHydrationSuppressWarning } from "./rules/rendering-hydration-s
 import { rerenderSplitCombinedHooks } from "./rules/rerender-split-combined-hooks.js";
 import { rerenderUseRefTransientValues } from "./rules/rerender-use-ref-transient-values.js";
 import { serverParallelNestedFetching } from "./rules/server-parallel-nested-fetching.js";
+import { serverSerialization } from "./rules/server-serialization.js";
 import type { EslintRule, ItallRule } from "./types.js";
 
 export const ITALL_DEFINITIONS: ReadonlyArray<ItallRule> = [
@@ -16,6 +17,7 @@ export const ITALL_DEFINITIONS: ReadonlyArray<ItallRule> = [
   rerenderSplitCombinedHooks,
   rerenderUseRefTransientValues,
   serverParallelNestedFetching,
+  serverSerialization,
 ];
 
 export const ITALL_RULES: Record<string, EslintRule> = Object.fromEntries(

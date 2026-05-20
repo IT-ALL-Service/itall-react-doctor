@@ -21,6 +21,7 @@ export const ITALL_REACT_RULE_METADATA: Record<string, ItallReactRuleMetadata> =
     requires: [],
     tags: ["test-noise"],
   },
+  "itall/server-serialization": { defaultSeverity: "warn", requires: [], tags: [] },
 };
 
 // Back-compat surface — kept so existing `filterRulesToAvailable`

@@ -1,8 +1,8 @@
 # 사이드카 ESLint Plugin 통합 계획
 
-> 상태: **4/5 룰 구현 · 1/5 의도적 미구현(겹침 정책)** — `@it-all-service/react-doctor@0.5.0` / `@it-all-service/eslint-plugin-itall-react@0.5.0` 출시 예정
+> 상태: **6개 룰 구현 + 1개 의도적 미구현 (PoC HIGH 5/5 처리 끝, MEDIUM 그룹 C에서 2개 추가)**
 > 최초 작성일: 2026-05-19 · 마지막 업데이트: 2026-05-20
-> 목적: Vercel react-best-practices에서 react-doctor가 mechanical하게 커버 못 하는 룰 중 lintability 높은 5개를 사내 ESLint plugin으로 추가하고, **단일 react-doctor 점수**에 합산되도록 통합
+> 목적: Vercel react-best-practices에서 react-doctor가 mechanical하게 커버 못 하는 룰 중 안전하게 잡을 수 있는 것을 사내 ESLint plugin으로 추가하고, **단일 react-doctor 점수**에 합산되도록 통합
 
 ---
 
@@ -22,15 +22,17 @@ react-doctor 점수는 모든 진단의 합으로 계산된다. 같은 anti-patt
 
 ## 현재 진척 (한눈에)
 
-| #   | 룰                                           | 상태                                                                                                                 | 비고                                                |
-| --- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 1   | `itall/rerender-use-ref-transient-values`    | ✅ **구현 완료** (v0.3.0, identifier resolution은 v0.4.0)                                                            | 인라인 핸들러 + 같은 파일의 함수 정의 추적          |
-| 2   | `itall/async-cheap-condition-before-await`   | ✅ **구현 완료** (v0.5.0)                                                                                            | LogicalExpression(`&&`) 분석                        |
-| 3   | `itall/rendering-hydration-suppress-warning` | ✅ **구현 완료** (v0.4.0)                                                                                            | new Date/Math.random/Intl 등 + JSXElement 조상 스택 |
-| 4   | `itall/server-parallel-nested-fetching`      | ✅ **구현 완료** (v0.5.0)                                                                                            | `Promise.all(...map())` 두 단 sequential 변수 추적  |
-| 5   | `itall/async-api-routes`                     | ❌ **의도적 미구현** — upstream `react-doctor/server-sequential-independent-await`(+3개부터 `async-parallel`)와 겹침 | 결정 근거는 위 "겹침 정책" · §3-룰5 데시전 레코드   |
+| #   | 룰                                           | 상태                                                                                                                 | 비고                                                                       |
+| --- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | `itall/rerender-use-ref-transient-values`    | ✅ **구현 완료** (v0.3.0, identifier resolution은 v0.4.0)                                                            | 인라인 핸들러 + 같은 파일의 함수 정의 추적                                 |
+| 2   | `itall/async-cheap-condition-before-await`   | ✅ **구현 완료** (v0.5.0)                                                                                            | LogicalExpression(`&&`) 분석                                               |
+| 3   | `itall/rendering-hydration-suppress-warning` | ✅ **구현 완료** (v0.4.0)                                                                                            | new Date/Math.random/Intl 등 + JSXElement 조상 스택                        |
+| 4   | `itall/server-parallel-nested-fetching`      | ✅ **구현 완료** (v0.5.0, `tags: ["test-noise"]`)                                                                    | `Promise.all(...map())` 두 단 sequential 변수 추적                         |
+| 5   | `itall/async-api-routes`                     | ❌ **의도적 미구현** — upstream `react-doctor/server-sequential-independent-await`(+3개부터 `async-parallel`)와 겹침 | 결정 근거는 위 "겹침 정책" · §3-룰5 데시전 레코드                          |
+| 6   | `itall/rerender-split-combined-hooks`        | ✅ **구현 완료** (useMemo 한정, 2026-05-20)                                                                          | dep array의 disjoint subset만 참조하는 step 분리 권고 · §3-룰6             |
+| 7   | `itall/server-serialization`                 | ✅ **구현 완료** (단일 파일, 2026-05-20)                                                                             | `'use client'` 파일에서 destructured prop 1~2 필드만 사용 시 flag · §3-룰7 |
 
-PoC 4개 룰 구현 완료 + 1개 미구현 확정. 추가 후보 룰 발굴은 §0-1 "GAP 재검토 결과(2026-05-20)"에 정리되어 사실상 종료됨. 다음 우선순위는 운영 관측 결과를 보고 `warn`→`error` 승격 검토.
+PoC HIGH 5/5 + MEDIUM 그룹 C 중 mechanical 가능한 2개 추가 = **6개 구현, 1개 의도적 미구현**. 70개 룰 전수 재검토 결과는 §0-1 + §0-2. 추가 후보 발굴은 사실상 종료, 다음 우선순위는 운영 관측 결과 기반 `warn`→`error` 승격 또는 룰 비활성 검토.
 
 ---
 
@@ -77,15 +79,82 @@ PoC 4개 룰 구현 완료 + 1개 미구현 확정. 추가 후보 룰 발굴은 
 cross-file 분석이나 휴리스틱이 필요해 false positive 위험 큼.
 
 - ~~`rerender-split-combined-hooks`~~ ✅ **구현됨 (useMemo 케이스만, 2026-05-20)** — 인프라(capability/tag) 깔린 이후 보수적 한정 버전으로 도입. body 안 `const X = ...` 2개 이상이 dep array의 disjoint subset만 참조할 때만 발화. `useEffect` 케이스는 side-effect 순서·cleanup 위험으로 skip. §3-룰6 데시전 레코드 참고.
-- `server-serialization` — RSC → Client prop 필드 사용량 추적. cross-file 정적 분석 필요. 🟡 MEDIUM/HIGH 난이도, 4~8h. **여전히 미도입** — 단일 파일 분석으로는 의미 있는 신호를 추출 못 함 (callee가 다른 파일).
+- ~~`server-serialization`~~ ✅ **구현됨 (단일 파일 한정, 2026-05-20)** — 호출부(서버) cross-file 분석 대신 callee(`'use client'` 파일)에서 "destructured prop 1~2개 필드만 읽음" 신호로 잡는 좁은 버전. §3-룰7 데시전 레코드 참고. spread/computed/whole-passing은 모두 skip.
 - `bundle-conditional` — feature flag 패턴 + 큰 모듈 정적 import 검출. 휴리스틱 필요. 🟡 MEDIUM. **여전히 미도입** — "heavy 모듈"이라는 mechanical 신호가 없어서 false positive 폭발 우려.
 
 ### 결론
 
-`rerender-split-combined-hooks` 도입으로 사이드카 룰 **5개 구현 + 1개 의도적 미구현(겹침) + 2개 도입 보류(MEDIUM 잔여)**. 추가 작업은:
+`rerender-split-combined-hooks` + `server-serialization` 도입으로 사이드카 룰 **6개 구현 + 1개 의도적 미구현(겹침) + 1개 도입 보류**. 추가 작업은:
 
-1. **운영 관측을 통한 후속 결정** — `v0.5.0` (또는 다음 minor) 출시 후 컨슈머 프로젝트에서 false positive 데이터를 모은다. `rerender-split-combined-hooks`가 실 환경에서 적정한 비율의 진단을 내는지 확인.
+1. **운영 관측을 통한 후속 결정** — 출시 후 컨슈머 프로젝트에서 false positive 데이터를 모은다. 두 신규 룰(useMemo splitting, RSC 직렬화)이 실 환경에서 적정한 비율의 진단을 내는지 확인.
 2. **upstream 업데이트 모니터링** — upstream `oxlint-plugin-react-doctor`가 새 룰을 추가하거나 기존 룰의 범위가 변하면 우리 사이드카 룰들의 겹침 가능성을 재검증.
+
+---
+
+## 0-2. 70 룰 전수 audit (2026-05-20, 재조사)
+
+`server-serialization` 도입 직전, 70개 Vercel 룰을 한 번 더 1개씩 spec 본문 직접 fetch해서 분류한 라운드. 결과 표를 결정 기록으로 보존.
+
+### 분류 요약
+
+| 카테고리                            | 개수   |
+| ----------------------------------- | ------ |
+| ✅ 사이드카 구현                    | 6      |
+| ❌ 사이드카 의도적 미구현 (겹침)    | 1      |
+| ✅ upstream 직접 커버 (이름 동일)   | 31     |
+| ✅ upstream 의미 커버 (이름 다름)   | 17     |
+| 🔴 prose-only (lint 신호 추출 불가) | 8      |
+| 🟡 도입 보류 (mechanical 신호 부족) | 7      |
+| **합계**                            | **70** |
+
+**사이드카+upstream 점수 반영 합계 = 55개 (78%).** 나머지 15개는 mechanical lint 자체가 불가능하거나 단일 파일 분석 한계.
+
+### 🔴 prose-only (8개)
+
+`async-suspense-boundaries`, `bundle-defer-third-party`, `bundle-dynamic-imports`, `client-swr-dedup`, `js-request-idle-callback`, `rendering-activity`, `rendering-content-visibility`, `rendering-resource-hints` — 전부 "X API를 써라" missing-call 패턴. AST에서 추출할 신호 없음.
+
+### 🟡 도입 보류 (7개, 룰별 사유)
+
+| 룰                            | anti-pattern                                              | 보류 사유                                                                   | 인프라 추가 시?                          |
+| ----------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------- |
+| `bundle-preload`              | hover/focus 시 `import('./heavy')` preload 안 함          | 모든 onMouseEnter/onFocus에 dynamic import 강제 시 FP 폭발. heavy 신호 부재 | ❌ 모듈 크기 메타 필요 (bundle analyzer) |
+| `bundle-conditional`          | feature flag 분기에서 큰 모듈 static import               | "heavy"의 mechanical 정의 부재. 동일 사유                                   | ❌ 동일                                  |
+| `async-dependencies`          | `Promise.all` 후 종속 await 체인이 직렬화                 | dependency graph + 의미적 "독립" 판단. ROI 낮음                             | 🟡 매우 한정 형태만, 효용 낮음           |
+| `js-cache-function-results`   | render 안 동일 인자 pure 함수 반복 호출                   | pure 함수 판별 불가. cross-render cache는 side effect 위험                  | ❌ purity 어노테이션 필요                |
+| `rerender-memo`               | useMemo 결과를 early return 전에 계산                     | "expensive" 판별 휴리스틱 → 무차별 적용 시 FP 폭발                          | ❌ 비용 모델 없으면 불가                 |
+| `rerender-use-deferred-value` | 큰 list filter가 input 즉시 재실행                        | "큰 list" 판별 + 의도 vs 누락 구분 불가                                     | ❌ prose성                               |
+| `server-cache-lru`            | sequential 요청 간 공유돼야 할 fetch가 매 요청마다 DB hit | cross-request scope, ESLint 단일 파일 분석 범위 밖                          | ❌ 단일 파일 lint 외                     |
+
+### ✅ upstream 의미 커버 (이름 다름) — 17개 매핑
+
+| Vercel                               | upstream                              |
+| ------------------------------------ | ------------------------------------- |
+| `advanced-use-latest`                | `prefer-use-effect-event`             |
+| `advanced-effect-event-deps`         | `no-effect-event-in-deps`             |
+| `advanced-init-once` (부분)          | `rerender-lazy-state-init`            |
+| `bundle-analyzable-paths`            | `no-dynamic-import-path`              |
+| `bundle-barrel-imports`              | `no-barrel-import`                    |
+| `client-event-listeners`             | `effect-needs-cleanup`                |
+| `client-localstorage-schema`         | `client-localstorage-no-version`      |
+| `rerender-defer-reads`               | `rerender-defer-reads-hook`           |
+| `rerender-derived-state`             | `rerender-derived-state-from-hook`    |
+| `rerender-derived-state-no-effect`   | `no-derived-state-effect`             |
+| `rerender-simple-expression-in-memo` | `no-usememo-simple-expression`        |
+| `rerender-move-effect-to-event`      | `no-effect-event-handler`             |
+| `rerender-no-inline-components`      | `no-nested-component-definition`      |
+| `rerender-transitions`               | `rerender-transitions-scroll`         |
+| `server-no-shared-module-state`      | `server-no-mutable-module-state`      |
+| `server-parallel-fetching`           | `server-sequential-independent-await` |
+| `server-cache-react` (부분)          | `server-cache-with-object-literal`    |
+
+### 액션 결론
+
+1. **즉시 도입 가능 mechanical 룰: 0개.** 사이드카 6개 구현으로 mechanical 후보는 사실상 모두 처리됨.
+2. **인프라 한 단계 추가로 가능한 룰: 0개.** `server-serialization`의 cross-file 진짜 형태는 여전히 module graph 필요(이번 단일 파일 버전은 callee 신호만). `bundle-*`는 bundle analyzer 통합 필요. ROI 검토 후 결정.
+3. **운영 데이터 수집 우선** — 새 룰 발굴 작업 일시 중단. 사이드카 6개의 실 환경 false positive 비율 측정 후:
+   - `useEffect` 케이스로 `rerender-split-combined-hooks` 확장
+   - `server-serialization` threshold(현재 1~2 필드) 조정 검토
+   - `bundle-conditional`/`bundle-preload` — bundle analyzer 통합 시 재도전
 
 ---
 
@@ -342,6 +411,36 @@ const ys = await Promise.all(xs.map(getY)); // ← 이 단계 anti-pattern
 
 - 사용자에게 더 sharp한 메시지가 필요하면 사이드카 룰을 추가하는 대신, upstream `server-sequential-independent-await`의 메시지를 fork 측에서 패치하거나, `apply-severity-controls`에서 route.ts 파일만 심각도 승격 같은 형태로 처리.
 - school-project E2E 결과에서 false positive가 많으면 upstream을 끄고 사이드카로 재구현하는 옵션을 다시 검토. 그땐 이 결정 기록을 업데이트.
+
+---
+
+### 룰 7: `server-serialization` ✅ 단일 파일 한정 구현 (2026-05-20, Decision Record)
+
+**Vercel 원문**: [server-serialization.md](https://github.com/vercel-labs/agent-skills/blob/main/skills/react-best-practices/rules/server-serialization.md)
+
+**Vercel의 진짜 anti-pattern**: Server Component가 `<Profile user={user} />`처럼 50개 필드 가진 객체를 통째로 Client Component에 prop으로 넘기면, RSC → Client 직렬화 단계에서 안 쓰는 필드까지 모두 HTML 페이로드에 박혀버린다. 호출부에서 `<Profile name={user.name} />`처럼 flat 필드를 전달해야 한다.
+
+**우리가 구현한 좁은 버전**: 호출부(서버) cross-file 분석 대신 **callee(`'use client'` 파일)에서** "destructured prop 1~2개 필드만 읽음" 신호로 잡는다. 즉 진짜 결정은 부모 쪽에 있지만, 자식 쪽에서 강한 신호가 보일 때 진단을 띄운다.
+
+**AST 알고리즘**:
+
+1. Program 진입 시 `"use client"` directive 탐지 — 없으면 visitor 비움 (서버 파일은 RSC 경계에서 receive 안 함)
+2. `FunctionDeclaration`/`FunctionExpression`/`ArrowFunctionExpression` 중 Pascal-cased 이름의 컴포넌트만 inspection
+3. 첫 param이 `ObjectPattern`이어야 함 (destructured prop)
+4. ObjectPattern의 각 property identifier에 대해:
+   - body 전체 walk, 그 identifier 참조 수집
+   - 모든 참조가 `<id>.<staticField>` 형태인지 확인 (computed access, spread, 다른 함수 인자 등 발견 시 즉시 skip)
+   - distinct field 개수가 1 또는 2면 flag
+
+**왜 cross-file 안 했나**: 본격적인 module graph + RSC 경계 추적이 필요한 작업(견적 4~8h 이상)이고, oxlint JS plugin은 단일 파일 컨텍스트에서 동작. cross-file 인덱서를 fork CLI에 추가하려면 캐시·invalidation·tsconfig 통합 등 별도 인프라 항목이 됨. callee 신호만으로도 anti-pattern을 강하게 잡을 수 있다고 판단.
+
+**False positive 경계**:
+
+- 3개 이상 필드를 쓰는 컴포넌트는 합리적인 prop bag으로 간주 (skip)
+- spread, computed access, 함수에 그대로 전달 등 "통째 사용" 시그널이 하나라도 있으면 skip
+- non-Pascal 함수 이름은 컴포넌트로 안 봄
+
+**향후 재검토 조건**: 사내 RSC 도입이 확대되어 cross-file 분석의 ROI가 정당화되면 module graph 기반 v2 검토. 그때까지는 이 단일 파일 버전이 충분.
 
 ---
 
