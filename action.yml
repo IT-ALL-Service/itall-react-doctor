@@ -143,6 +143,11 @@ runs:
         # observed cases where org-internal `github.token` returns 401
         # despite packages:read + repo on the access list.
         NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
+        # 컨슈머 repo의 project-local `.npmrc`가 `${IT_ALL_NPM_TOKEN}` 또는
+        # `${NPM_TOKEN}` placeholder를 쓰는 경우(권장 패턴)도 풀리도록 같이
+        # 노출. 안 쓰면 무해.
+        IT_ALL_NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
+        NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         NO_COLOR: "1"
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_PROJECT: ${{ inputs.project }}
@@ -192,6 +197,8 @@ runs:
         # Same precedence as the Run step: prefer optional PAT, fall
         # back to github.token. See the Run step comment for context.
         NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
+        IT_ALL_NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
+        NPM_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_OFFLINE: ${{ inputs.offline }}
         INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
