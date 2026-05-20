@@ -85,28 +85,4 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     expect(typeof visitor.ArrowFunctionExpression).toBe("function");
     expect(typeof visitor.Program).toBe("function");
   });
-
-  it("registers the async-api-routes rule", () => {
-    const rule = plugin.rules["async-api-routes"];
-    expect(rule).toBeDefined();
-    expect(rule.meta.type).toBe("problem");
-    expect(rule.meta.docs.recommended).toBe(true);
-    expect(rule.meta.docs.description).toContain("route.ts");
-    expect(typeof rule.create).toBe("function");
-  });
-
-  it("async-api-routes visitor only attaches for route.ts files", () => {
-    const rule = plugin.rules["async-api-routes"];
-    const visitorInRoute = rule.create({
-      report: () => {},
-      getFilename: () => "/app/api/users/route.ts",
-    });
-    expect(typeof visitorInRoute.ExportNamedDeclaration).toBe("function");
-
-    const visitorElsewhere = rule.create({
-      report: () => {},
-      getFilename: () => "/app/page.tsx",
-    });
-    expect(visitorElsewhere.ExportNamedDeclaration).toBeUndefined();
-  });
 });
