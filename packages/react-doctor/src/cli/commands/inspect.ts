@@ -19,7 +19,6 @@ import { STAGED_FILES_TEMP_DIR_PREFIX } from "../utils/constants.js";
 import { getStagedSourceFiles, materializeStagedFiles } from "../utils/get-staged-files.js";
 import type { InspectFlags } from "../utils/inspect-flags.js";
 import { handleError } from "../utils/handle-error.js";
-import { isCiEnvironment } from "../utils/is-ci-environment.js";
 import {
   enableJsonMode,
   setJsonReportDirectory,
@@ -86,11 +85,6 @@ export const inspectAction = async (directory: string, flags: InspectFlags): Pro
 
     const scanOptions = resolveCliInspectOptions(flags, userConfig);
     const skipPrompts = shouldSkipPrompts({ yes: flags.yes, full: flags.full, json: flags.json });
-
-    if (!flags.offline && isCiEnvironment() && !isQuiet) {
-      logger.dim("CI detected — scoring locally.");
-      logger.break();
-    }
 
     if (flags.staged) {
       setJsonReportMode("staged");

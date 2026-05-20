@@ -19,12 +19,12 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { inspect } from "../../src/inspect.js";
-import type { InspectResult, ReactDoctorConfig } from "@react-doctor/types";
+import type { InspectResult } from "@react-doctor/types";
 import {
   encodeAnnotationProperty,
   encodeAnnotationMessage,
 } from "../../src/cli/utils/annotation-encoding.js";
-import { setupReactProject, writeFile, writeJson } from "./_helpers.js";
+import { setupReactProject, writeJson } from "./_helpers.js";
 
 const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "rd-cli-and-output-"));
@@ -126,45 +126,9 @@ describe("issue #66 + #81: GitHub Actions annotation encoding", () => {
   });
 });
 
-describe("issue #92: share: false config suppresses the share link in scan output", () => {
-  it("ReactDoctorConfig type accepts `share: false`", () => {
-    // HACK: pure type assertion. If `share` is removed from the type,
-    // this file stops type-checking and the suite refuses to run.
-    const config: ReactDoctorConfig = { share: false };
-    expect(config.share).toBe(false);
-  });
-
-  it("the share URL appears in stdout by default and is suppressed when share=false", async () => {
-    const projectDir = setupMinimalReactProject("issue-92-default");
-    writeFile(
-      path.join(projectDir, "src", "App.tsx"),
-      `import { useState, useEffect } from "react";
-export const App = ({ name }: { name: string }) => {
-  const [n, setN] = useState("");
-  useEffect(() => { setN(name); }, [name]);
-  return <div>{n}</div>;
-};
-`,
-    );
-    const defaultRun = await captureScanOutput(projectDir, { offline: false });
-    expect(defaultRun.stdout).toContain("Share your results");
-
-    const projectDir2 = setupMinimalReactProject("issue-92-disabled");
-    writeFile(
-      path.join(projectDir2, "src", "App.tsx"),
-      `import { useState, useEffect } from "react";
-export const App = ({ name }: { name: string }) => {
-  const [n, setN] = useState("");
-  useEffect(() => { setN(name); }, [name]);
-  return <div>{n}</div>;
-};
-`,
-    );
-    writeJson(path.join(projectDir2, "react-doctor.config.json"), { share: false });
-    const disabledRun = await captureScanOutput(projectDir2, { offline: false });
-    expect(disabledRun.stdout).not.toContain("Share your results");
-  });
-});
+// itall fork: 외부 `Share your results` URL 출력은 제거됐고, ReactDoctorConfig
+// 의 `share` 필드는 deprecation noop 으로만 남는다. upstream issue #92 회귀
+// 테스트는 더 이상 적용되지 않아 삭제.
 
 describe("default CLI issue output", () => {
   it("groups default findings by category and keeps the score summary after issues", async () => {
