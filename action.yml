@@ -75,13 +75,27 @@ runs:
 
     # Authenticate npm for the @it-all-service scope so `npx` (and any
     # transient pnpm/yarn invocation the consumer kicks off) can pull
-    # the package from GitHub Packages. The token lives only in this
-    # job's env — the file written by `setup-node` is scoped to the
-    # runner workspace and is wiped at job end.
+    # the package from GitHub Packages.
+    #
+    # IMPORTANT: GitHub Apps installation tokens cannot authenticate
+    # against `npm.pkg.github.com` (GitHub limitation; the npm
+    # registry only accepts `GITHUB_TOKEN` from a workflow context or
+    # a personal access token with `read:packages`). We therefore
+    # bypass `inputs.github-token` for this step and use
+    # `${{ github.token }}` directly — that's the auto-generated
+    # workflow token, which has `packages:read` for org-internal
+    # packages by default and works against the npm registry.
+    #
+    # `inputs.github-token` is still used downstream for the PR
+    # comment step where App tokens shine (granular fine-grained
+    # permissions, no fork-PR restriction).
+    #
+    # The token only lives inside this job's env — the `.npmrc` file
+    # is scoped to the runner workspace and wiped at job end.
     - name: Configure GitHub Packages auth
       shell: bash
       env:
-        NODE_AUTH_TOKEN: ${{ inputs.github-token }}
+        NODE_AUTH_TOKEN: ${{ github.token }}
       run: |
         echo "registry=https://registry.npmjs.org/" >> "$HOME/.npmrc"
         echo "@it-all-service:registry=https://npm.pkg.github.com" >> "$HOME/.npmrc"
