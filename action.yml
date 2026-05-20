@@ -73,34 +73,6 @@ runs:
         registry-url: "https://npm.pkg.github.com"
         scope: "@it-all-service"
 
-    # Authenticate npm for the @it-all-service scope so `npx` (and any
-    # transient pnpm/yarn invocation the consumer kicks off) can pull
-    # the package from GitHub Packages.
-    #
-    # IMPORTANT: GitHub Apps installation tokens cannot authenticate
-    # against `npm.pkg.github.com` (GitHub limitation; the npm
-    # registry only accepts `GITHUB_TOKEN` from a workflow context or
-    # a personal access token with `read:packages`). We therefore
-    # bypass `inputs.github-token` for this step and use
-    # `${{ github.token }}` directly — that's the auto-generated
-    # workflow token, which has `packages:read` for org-internal
-    # packages by default and works against the npm registry.
-    #
-    # `inputs.github-token` is still used downstream for the PR
-    # comment step where App tokens shine (granular fine-grained
-    # permissions, no fork-PR restriction).
-    #
-    # The token only lives inside this job's env — the `.npmrc` file
-    # is scoped to the runner workspace and wiped at job end.
-    - name: Configure GitHub Packages auth
-      shell: bash
-      env:
-        NODE_AUTH_TOKEN: ${{ github.token }}
-      run: |
-        echo "registry=https://registry.npmjs.org/" >> "$HOME/.npmrc"
-        echo "@it-all-service:registry=https://npm.pkg.github.com" >> "$HOME/.npmrc"
-        echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"
-
     # diff mode preparation — when triggered by a pull_request event,
     # ensure the base ref is fetched locally so the CLI's diff resolver
     # can compute `git diff <base>...HEAD`. We keep the argument
@@ -120,6 +92,18 @@ runs:
     - name: Run react-doctor
       shell: bash
       env:
+        # `setup-node` placed an `.npmrc` under `$RUNNER_TEMP` with the
+        # `@it-all-service` scope pointing at GitHub Packages and an
+        # `_authToken=$NODE_AUTH_TOKEN` placeholder. We supply that
+        # variable here so the placeholder resolves at npm-install time.
+        # `github.token` is the auto-generated workflow token; it has
+        # `packages:read` for org-internal packages by default (the
+        # consumer workflow must also grant `permissions: packages: read`).
+        # GitHub App installation tokens cannot authenticate against
+        # `npm.pkg.github.com`, which is why we use `github.token`
+        # here instead of `inputs.github-token` — the App token is
+        # still used downstream for the PR comment step.
+        NODE_AUTH_TOKEN: ${{ github.token }}
         NO_COLOR: "1"
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_PROJECT: ${{ inputs.project }}
@@ -166,6 +150,10 @@ runs:
       if: always()
       shell: bash
       env:
+        # See the Run step above for why `github.token` powers npm
+        # registry auth here (App tokens can't authenticate against
+        # `npm.pkg.github.com`).
+        NODE_AUTH_TOKEN: ${{ github.token }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_OFFLINE: ${{ inputs.offline }}
         INPUT_RD_VERSION: ${{ inputs.react-doctor-version }}
