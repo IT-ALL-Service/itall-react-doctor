@@ -38,6 +38,7 @@
   "scripts": {
     "dev": "vp pack --watch",
     "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && NODE_ENV=production vp pack",
+    "gen": "node ./scripts/generate-itall-registry.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vp test run"
   },

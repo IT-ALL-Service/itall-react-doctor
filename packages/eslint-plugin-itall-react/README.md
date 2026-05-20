@@ -147,15 +147,21 @@ const ys = await Promise.all(items.map((id) => getX(id).then(getY)));
 pnpm --filter @it-all-service/eslint-plugin-itall-react build
 pnpm --filter @it-all-service/eslint-plugin-itall-react typecheck
 pnpm --filter @it-all-service/eslint-plugin-itall-react test
+pnpm gen   # rule 추가/삭제/이름변경 후 registry 재생성 (root에서)
 ```
 
-룰 추가 절차:
+룰 추가 절차 (codegen 도입 후):
 
-1. `src/rules/<rule-key>.ts` 작성 — `EslintRule` shape, `meta.docs.url`은 GitHub blob URL로
-2. `src/index.ts`의 `rules` 객체에 등록
-3. fork CLI의 `packages/core/src/runners/oxlint/plugin-resolution.ts`에 있는 `ITALL_REACT_RULES`에 `itall/<rule-key>: "warn" | "error"` 추가
-4. `tests/`에 smoke test 추가
+1. `src/rules/<rule-key>.ts` 작성
+   - export 이름은 kebab→camelCase (`async-foo-bar` → `asyncFooBar`)
+   - `EslintRule` shape, `meta.docs.url`은 GitHub blob URL로
+2. `pnpm gen` 실행 — `src/registry.gen.ts`와 `packages/core/src/runners/oxlint/itall-rules.gen.ts`가 자동으로 갱신됨 (default severity `warn`)
+3. `tests/plugin-shape.test.ts`에 smoke test 추가
+4. (선택) `packages/react-doctor/tests/regressions/itall-sidecar-rules.test.ts`에 E2E 케이스 추가 — silent-failure 회귀 방지용 (v0.4.0 hydration 사고의 교훈)
 5. 이 README 룰 목록 갱신
+6. 심각도를 `warn` 외로 두려면 `scripts/generate-itall-registry.mjs`의 `SEVERITY_OVERRIDES` 맵에 엔트리 추가 후 `pnpm gen`
+
+`*.gen.ts` 파일은 git에 커밋된다 (upstream과 동일한 방식 — 리뷰 시점에 wiring 변화를 한눈에 볼 수 있어 의도적).
 
 ## 라이선스
 

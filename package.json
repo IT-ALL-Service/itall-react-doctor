@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "turbo run dev --filter=@it-all-service/react-doctor",
     "build": "turbo run build",
+    "gen": "pnpm --filter @it-all-service/eslint-plugin-itall-react gen",
     "test": "turbo run test --filter=@it-all-service/react-doctor",
     "typecheck": "turbo run typecheck",
     "lint": "vp lint",
