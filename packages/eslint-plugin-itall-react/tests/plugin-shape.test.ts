@@ -37,14 +37,13 @@ describe("@it-all-service/eslint-plugin-itall-react", () => {
     expect(typeof rule.create).toBe("function");
   });
 
-  it("rendering-hydration-suppress-warning visitor covers JSX traversal hooks", () => {
+  it("rendering-hydration-suppress-warning visitor covers expression hooks", () => {
     const rule = plugin.rules["rendering-hydration-suppress-warning"];
     const visitor = rule.create({
       report: () => {},
       getFilename: () => "test.tsx",
     });
-    expect(typeof visitor.JSXElement).toBe("function");
-    expect(typeof visitor["JSXElement:exit"]).toBe("function");
-    expect(typeof visitor.JSXExpressionContainer).toBe("function");
+    expect(typeof visitor.NewExpression).toBe("function");
+    expect(typeof visitor.CallExpression).toBe("function");
   });
 });
