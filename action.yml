@@ -43,11 +43,11 @@ inputs:
     default: "true"
   github-token:
     description: |
-      Token used (1) to install the private `@it-all-service/react-doctor`
-      package from GitHub Packages and (2) to post the PR comment. The
-      consumer workflow should pass `${{ secrets.GITHUB_TOKEN }}` — the
-      default workflow token already has `packages:read` for org-internal
-      packages and `pull-requests:write` when the workflow grants it.
+      Token used (1) to install the private @it-all-service/react-doctor
+      package from GitHub Packages and (2) to post the PR comment. Pass
+      the default workflow token (which already has packages:read for
+      org-internal packages and pull-requests:write when the workflow
+      grants it) or a GitHub App token if the org policy needs one.
     required: true
   node-version:
     description: "Node.js version to use."
