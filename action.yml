@@ -96,7 +96,17 @@ runs:
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token != '' && inputs.npm-auth-token || github.token }}
+        NPM_AUTH_INPUT: ${{ inputs.npm-auth-token }}
       run: |
+        # TODO(debug): NODE_AUTH_TOKEN resolution 추적용. 안정화되면 제거.
+        echo "::group::token-debug"
+        echo "input-len=${#NPM_AUTH_INPUT}"
+        echo "resolved-len=${#NODE_AUTH_TOKEN}"
+        echo "resolved-prefix=${NODE_AUTH_TOKEN:0:4}"
+        curl -s -o /dev/null -w "registry-probe: HTTP %{http_code}\n" \
+          -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+          https://npm.pkg.github.com/@it-all-service/react-doctor
+        echo "::endgroup::"
         echo "@it-all-service:registry=https://npm.pkg.github.com" >> "$HOME/.npmrc"
         echo "//npm.pkg.github.com/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"
         echo "always-auth=true" >> "$HOME/.npmrc"
