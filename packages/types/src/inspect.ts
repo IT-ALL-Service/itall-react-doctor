@@ -22,6 +22,8 @@ export interface InspectResult {
 
 export interface InspectOptions {
   lint?: boolean;
+  /** See `ReactDoctorConfig.deadCode`. Ignored in diff / staged mode. */
+  deadCode?: boolean;
   verbose?: boolean;
   scoreOnly?: boolean;
   offline?: boolean;

@@ -11,6 +11,8 @@ interface CombineDiagnosticsInput {
   readFileLinesSync?: (filePath: string) => string[] | null;
   includeEnvironmentChecks?: boolean;
   respectInlineDisables?: boolean;
+  /** Extra diagnostics from async project-level checks (e.g. `checkDeadCode`). */
+  extraDiagnostics?: Diagnostic[];
 }
 
 export const combineDiagnostics = (input: CombineDiagnosticsInput): Diagnostic[] => {
@@ -22,10 +24,11 @@ export const combineDiagnostics = (input: CombineDiagnosticsInput): Diagnostic[]
     readFileLinesSync = createNodeReadFileLinesSync(directory),
     includeEnvironmentChecks = true,
     respectInlineDisables,
+    extraDiagnostics = [],
   } = input;
-  const extraDiagnostics =
+  const environmentDiagnostics =
     isDiffMode || !includeEnvironmentChecks ? [] : checkReducedMotion(directory);
-  const merged = [...lintDiagnostics, ...extraDiagnostics];
+  const merged = [...lintDiagnostics, ...environmentDiagnostics, ...extraDiagnostics];
   return mergeAndFilterDiagnostics(merged, directory, userConfig, readFileLinesSync, {
     respectInlineDisables,
   });
