@@ -92,7 +92,7 @@ export const componentFunctionDeclaration = defineItallRule({
     type: "suggestion",
     docs: {
       description:
-        "React components should be declared with the `function` keyword (`function Foo() { ... }`), not as arrow-function consts. Improves stack traces, DevTools labels, and TSX generics ergonomics.",
+        "React component는 const arrow function이 아니라 `function` keyword(`function Foo() { ... }`)로 선언합니다. stack trace, DevTools label, TSX generic 문법이 더 명확해집니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/component-function-declaration.ts",
       recommended: true,
     },
@@ -112,7 +112,7 @@ export const componentFunctionDeclaration = defineItallRule({
         if (!functionReturnsJsx(init)) return;
         context.report({
           node,
-          message: `Declare \`${name}\` with the \`function\` keyword (\`function ${name}(props) { ... }\`) instead of an arrow-function const. Function declarations hoist, get named in stack traces / React DevTools, and avoid the awkward \`<T,>\` generic workaround in TSX.`,
+          message: `\`${name}\`는 const arrow function 대신 \`function\` keyword(\`function ${name}(props) { ... }\`)로 선언하세요. 함수 선언은 hoisting되고 stack trace / React DevTools에 이름이 안정적으로 표시되며, TSX에서 어색한 \`<T,>\` generic 우회 문법도 피할 수 있습니다.`,
         });
       },
     };

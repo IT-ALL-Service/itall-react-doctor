@@ -82,6 +82,8 @@ jobs:
 
 ## 로컬 개발
 
+기본 명령은 `@antfu/ni`의 `ni` / `nr`를 사용합니다. 로컬에 `nr`가 없다면 이 저장소의 `packageManager`가 pnpm이므로 `pnpm <script>`로 같은 스크립트를 실행하면 됩니다.
+
 ```bash
 ni
 nr gen
@@ -90,6 +92,16 @@ nr typecheck
 nr test
 nr lint
 nr format:check
+```
+
+```bash
+pnpm install
+pnpm gen
+pnpm build
+pnpm typecheck
+pnpm test
+pnpm lint
+pnpm format:check
 ```
 
 사이드카 룰을 추가할 때는 보통 다음 파일을 함께 수정합니다.

@@ -145,7 +145,7 @@ const buildMessage = (
   const aList = [...aDeps].sort().join(", ");
   const bList = [...bDeps].sort().join(", ");
   const allList = [...allDeps].sort().join(", ");
-  return `\`useMemo\` body combines two independent steps — one uses \`[${aList}]\`, the other uses \`[${bList}]\` — but the deps array is \`[${allList}]\`. Changing any one dep recomputes both. Split into separate \`useMemo\` calls so each step only recomputes when its own deps change.`;
+  return `\`useMemo\` 본문에 서로 독립적인 두 단계가 섞여 있습니다. 한 단계는 \`[${aList}]\`, 다른 단계는 \`[${bList}]\`만 쓰지만 deps 배열은 \`[${allList}]\`입니다. deps 중 하나만 바뀌어도 두 단계가 모두 다시 계산되므로, 별도의 \`useMemo\`로 나누어 각 단계가 자기 deps가 바뀔 때만 재계산되게 하세요.`;
 };
 
 export const rerenderSplitCombinedHooks = defineItallRule({
@@ -155,7 +155,7 @@ export const rerenderSplitCombinedHooks = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Split a `useMemo` body into separate hooks when its sub-steps depend on disjoint subsets of the deps array — avoids recomputing independent work.",
+        "`useMemo` 내부 단계들이 deps 배열의 서로 다른 부분에 의존한다면 별도 hook으로 분리해 독립적인 작업의 불필요한 재계산을 줄입니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/rerender-split-combined-hooks.ts",
       recommended: true,
     },

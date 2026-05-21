@@ -115,7 +115,7 @@ const inspectJsxContext = (start: AstNode): JsxContextCheck => {
 };
 
 const buildMessage = (label: string): string =>
-  `Wrap \`${label}\` in an element with \`suppressHydrationWarning\` — server/client outputs will diverge here and noisy hydration warnings hide real bugs.`;
+  `\`${label}\` 값은 서버와 클라이언트 출력이 달라질 수 있습니다. 감싸는 요소에 \`suppressHydrationWarning\`을 명시해 의도된 차이를 표시하고, 실제 hydration 문제와 섞이지 않게 하세요.`;
 
 export const renderingHydrationSuppressWarning = defineItallRule({
   id: "rendering-hydration-suppress-warning",
@@ -124,7 +124,7 @@ export const renderingHydrationSuppressWarning = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Wrap non-deterministic values (new Date(), Math.random(), Intl.*, etc.) rendered in JSX with `suppressHydrationWarning` to avoid hydration mismatch noise.",
+        "JSX에 렌더링되는 비결정적 값(new Date(), Math.random(), Intl.* 등)은 `suppressHydrationWarning`으로 감싸 hydration mismatch 노이즈를 줄입니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/rendering-hydration-suppress-warning.ts",
       recommended: true,
     },

@@ -76,7 +76,7 @@ export const noProcessEnvDirectAccess = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Forbid direct `process.env.X` access outside the designated env-defining module — import the validated `env` object instead so types are preserved and the public/secret split is enforced.",
+        "env 정의 모듈 밖에서 `process.env.X`를 직접 읽지 말고, 검증된 `env` 객체를 import해 타입과 public/secret 구분을 보존합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/no-process-env-direct-access.ts",
       recommended: true,
     },
@@ -92,7 +92,7 @@ export const noProcessEnvDirectAccess = defineItallRule({
         const label = describeAccess(member);
         context.report({
           node,
-          message: `Replace \`${label}\` with \`import { env } from "@/lib/env"\` — \`process.env\` returns \`string | undefined\` and bypasses the Zod-validated env contract. Add the variable to \`lib/env.ts\` if it is new.`,
+          message: `\`${label}\` 대신 \`import { env } from "@/lib/env"\`로 가져온 값을 사용하세요. \`process.env\`는 \`string | undefined\`를 반환하고 Zod로 검증한 env 계약을 우회합니다. 새 환경변수라면 먼저 \`lib/env.ts\`에 추가하세요.`,
         });
       },
     };

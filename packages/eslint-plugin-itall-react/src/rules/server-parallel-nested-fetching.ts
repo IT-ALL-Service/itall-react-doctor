@@ -93,7 +93,7 @@ const describeReceiver = (node: AstNode): string => {
 };
 
 const buildMessage = (firstReceiverLabel: string, firstBinding: string): string =>
-  `Nested \`Promise.all(...map())\` waterfalls between stages — every item in \`${firstReceiverLabel}\` must finish stage 1 (\`${firstBinding}\`) before any stage 2 fetch starts. Flatten with a per-item chain: \`Promise.all(${firstReceiverLabel}.map(x => getX(x).then(getY)))\` so each row runs both fetches in parallel with every other row.`;
+  `연속된 \`Promise.all(...map())\`이 단계 사이 waterfall을 만들고 있습니다. \`${firstReceiverLabel}\`의 모든 항목이 1단계(\`${firstBinding}\`)를 끝내야 2단계 fetch가 시작됩니다. \`Promise.all(${firstReceiverLabel}.map(x => getX(x).then(getY)))\`처럼 항목별 체인으로 합쳐 각 항목의 두 fetch가 다른 항목들과 함께 병렬로 돌게 하세요.`;
 
 const inspectStatements = (
   statements: ReadonlyArray<AstNode>,
@@ -152,7 +152,7 @@ export const serverParallelNestedFetching = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Flatten nested `Promise.all(arr.map(...))` waterfalls — chain per-item fetches inside a single `.map()` so rows run in parallel.",
+        "중첩된 `Promise.all(arr.map(...))` waterfall을 피하고, 항목별 fetch 체인을 하나의 `.map()` 안에 묶어 각 항목이 병렬로 처리되게 합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/server-parallel-nested-fetching.ts",
       recommended: true,
     },
