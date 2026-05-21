@@ -100,7 +100,7 @@ export const tanstackQueryKeyArray = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Pass `queryKey` / `mutationKey` as an array — TanStack Query uses array structural equality, so a bare string or identifier silently mismatches `invalidateQueries({ queryKey: [...] })` elsewhere.",
+        "`queryKey` / `mutationKey`는 배열로 전달합니다. TanStack Query는 배열 구조 동등성으로 캐시를 식별하므로 문자열 key는 다른 곳의 `invalidateQueries({ queryKey: [...] })`와 맞지 않을 수 있습니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/tanstack-query-key-array.ts",
       recommended: true,
     },
@@ -136,7 +136,7 @@ export const tanstackQueryKeyArray = defineItallRule({
         if (value.type === "CallExpression") return;
         context.report({
           node: property,
-          message: `\`${expectedKey}: ${describeQueryKeyShape(value)}\` must be an array. Use \`${expectedKey}: ["resource", ...params]\` so cache identity matches \`invalidateQueries({ ${expectedKey}: ["resource", ...] })\` calls from other modules.`,
+          message: `\`${expectedKey}: ${describeQueryKeyShape(value)}\`는 배열이어야 합니다. \`${expectedKey}: ["resource", ...params]\` 형태를 사용해 다른 모듈의 \`invalidateQueries({ ${expectedKey}: ["resource", ...] })\` 호출과 같은 캐시 identity를 공유하게 하세요.`,
         });
       },
     };

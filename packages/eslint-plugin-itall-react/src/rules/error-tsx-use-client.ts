@@ -62,7 +62,7 @@ export const errorTsxUseClient = defineItallRule({
     type: "problem",
     docs: {
       description:
-        'Next.js App Router `error.tsx` files must declare `"use client"` — Error boundaries are client-only per the framework spec.',
+        'Next.js App Router의 `error.tsx` 파일은 `"use client"`를 선언해야 합니다. Error boundary는 프레임워크 명세상 client-only입니다.',
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/error-tsx-use-client.ts",
       recommended: true,
     },
@@ -78,7 +78,7 @@ export const errorTsxUseClient = defineItallRule({
         context.report({
           node,
           message:
-            'Add `"use client";` as the first statement — Next.js App Router error boundaries (`error.tsx` / `global-error.tsx`) must run on the client because they rely on React lifecycle (`componentDidCatch`) and the framework-provided `reset()` is a client function.',
+            '파일 첫 줄에 `"use client";`를 추가하세요. Next.js App Router의 error boundary(`error.tsx` / `global-error.tsx`)는 React lifecycle(`componentDidCatch`)과 프레임워크가 제공하는 client 함수 `reset()`에 의존하므로 클라이언트에서 실행되어야 합니다.',
         });
       },
     };

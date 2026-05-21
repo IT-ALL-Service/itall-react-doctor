@@ -69,7 +69,7 @@ export const routeSegmentExplicitName = defineItallRule({
     type: "suggestion",
     docs: {
       description:
-        "Name the default export of Next.js routing files (page.tsx, layout.tsx, …) after its role (`RecruitListPage`, not `Page`) so stack traces and React DevTools can identify which segment threw.",
+        "Next.js routing files(page.tsx, layout.tsx 등)의 default export는 `Page` 같은 일반 이름 대신 `RecruitListPage`처럼 역할이 드러나는 이름으로 선언해 stack trace와 React DevTools에서 segment를 구분할 수 있게 합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/route-segment-explicit-name.ts",
       recommended: true,
     },
@@ -94,7 +94,7 @@ export const routeSegmentExplicitName = defineItallRule({
               : `RecruitList${match.role}`;
         context.report({
           node,
-          message: `Rename the default export to a role-revealing name like \`${exampleSegmentName}\` — generic \`${exportedName ?? "anonymous"}\` makes every routing segment look the same in stack traces and DevTools.`,
+          message: `default export 이름을 \`${exampleSegmentName}\`처럼 역할이 드러나게 바꾸세요. \`${exportedName ?? "anonymous"}\` 같은 일반 이름은 stack trace와 DevTools에서 모든 routing segment를 똑같이 보이게 합니다.`,
         });
       },
     };

@@ -93,7 +93,7 @@ const describeRhs = (node: AstNode): string => {
 };
 
 const buildMessage = (awaitLabel: string, rhsLabel: string): string =>
-  `Short-circuit \`${rhsLabel}\` first before \`${awaitLabel}\` — flipping the operands lets the cheap check skip the awaited call when it fails.`;
+  `\`${awaitLabel}\`보다 값싼 조건 \`${rhsLabel}\`을 먼저 검사하세요. 순서를 바꾸면 값싼 조건이 실패할 때 await 호출을 건너뛸 수 있습니다.`;
 
 export const asyncCheapConditionBeforeAwait = defineItallRule({
   id: "async-cheap-condition-before-await",
@@ -102,7 +102,7 @@ export const asyncCheapConditionBeforeAwait = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Place cheap, synchronous predicates before `await` in `&&` boolean checks so short-circuiting can skip the awaited call.",
+        "`&&` 조건에서는 값싼 동기 조건을 `await`보다 앞에 두어, 실패 시 awaited call을 short-circuit으로 건너뛰게 합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/async-cheap-condition-before-await.ts",
       recommended: true,
     },

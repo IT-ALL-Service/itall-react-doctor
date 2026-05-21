@@ -86,7 +86,7 @@ const visitDeclaration = (
   const kind = type === "TSInterfaceDeclaration" ? "interface" : "type";
   context.report({
     node: declaration,
-    message: `\`${kind} ${name}\` carries the ${violation.shape} marker — drop it (TypeScript already knows it's a type) or replace with a domain suffix (\`Model\` / \`Entity\` / \`Dto\`) when the role matters.`,
+    message: `\`${kind} ${name}\` 이름에 의미 없는 ${violation.shape} 표식이 들어 있습니다. TypeScript는 이미 type임을 알고 있으므로 제거하거나, 역할을 표현해야 한다면 \`Model\` / \`Entity\` / \`Dto\` 같은 domain suffix를 사용하세요.`,
   });
 };
 
@@ -110,7 +110,7 @@ export const noTypePrefixSuffix = defineItallRule({
     type: "suggestion",
     docs: {
       description:
-        "Drop language-marker prefixes / suffixes on type names (`IUser`, `FooType`). TypeScript already knows it's a type. Domain suffixes (`Model`, `Entity`, `Dto`) are allowed because they convey role.",
+        "type name의 언어 표식 prefix/suffix(`IUser`, `FooType`)를 제거합니다. TypeScript는 이미 type임을 알고 있으며, 역할을 나타내는 domain suffix(`Model`, `Entity`, `Dto`)는 허용합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/no-type-prefix-suffix.ts",
       recommended: true,
     },

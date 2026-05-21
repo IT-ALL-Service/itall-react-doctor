@@ -185,7 +185,7 @@ const findSetterCallsInHandlerBody = (
 };
 
 const buildMessage = (eventName: string, setter: string): string =>
-  `Avoid calling \`${setter}\` (useState setter) inside a high-frequency \`${eventName}\` handler — it forces a render on every event. Use \`useRef\` for transient values and mutate the DOM directly.`;
+  `고빈도 \`${eventName}\` 핸들러 안에서 \`${setter}\`(useState setter)를 호출하지 마세요. 이벤트마다 렌더링이 강제로 발생합니다. 좌표나 플래그처럼 일시적인 값은 \`useRef\`에 저장하고 필요한 DOM만 직접 갱신하세요.`;
 
 export const rerenderUseRefTransientValues = defineItallRule({
   id: "rerender-use-ref-transient-values",
@@ -194,7 +194,7 @@ export const rerenderUseRefTransientValues = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Avoid useState updates inside high-frequency event handlers (mousemove, scroll, etc.); use useRef for transient values.",
+        "mousemove, scroll 같은 고빈도 이벤트 핸들러 안에서는 useState 업데이트를 피하고, 일시적인 값은 useRef로 관리합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/rerender-use-ref-transient-values.ts",
       recommended: true,
     },

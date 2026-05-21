@@ -194,7 +194,7 @@ const buildMessage = (
     .sort()
     .map((field) => `${field}={${bindingName}.${field}}`)
     .join(" ");
-  return `\`${componentName}\` reads only ${fields.size === 1 ? "" : `${fields.size} fields `}${fieldList} from prop \`${bindingName}\`, but every other property is still serialized across the RSC → Client boundary. Pass flat fields instead — \`<${componentName} ${replacement} />\` — so the server payload only includes what the component actually renders.`;
+  return `\`${componentName}\`는 prop \`${bindingName}\`에서 ${fields.size === 1 ? "" : `${fields.size}개 필드 `}${fieldList}만 읽지만, 나머지 속성도 RSC → Client 경계를 넘어 함께 직렬화됩니다. \`<${componentName} ${replacement} />\`처럼 필요한 필드만 평평하게 넘겨 서버 payload에 실제 렌더링하는 값만 포함되게 하세요.`;
 };
 
 const checkFunction = (functionNode: AstNode, context: EslintRuleContext): void => {
@@ -227,7 +227,7 @@ export const serverSerialization = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "In Client Components (`'use client'` files), destructuring an object prop and reading only 1–2 fields hints that the parent is serializing dozens of unused fields across the RSC boundary — pass flat fields instead.",
+        "Client Component(`'use client'` 파일)에서 object prop을 구조분해한 뒤 1-2개 필드만 읽는다면 RSC 경계에서 불필요한 필드까지 직렬화될 수 있으므로 필요한 필드만 평평하게 전달합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/server-serialization.ts",
       recommended: true,
     },

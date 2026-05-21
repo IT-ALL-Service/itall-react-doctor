@@ -33,7 +33,7 @@ export const noDocumentTitleMutation = defineItallRule({
     type: "problem",
     docs: {
       description:
-        "Don't mutate `document.title` directly — crawlers see only the server HTML. Use the Next.js Metadata API (`metadata` / `generateMetadata`) so the title is in the response.",
+        "`document.title`을 직접 변경하지 않습니다. crawler는 server HTML만 보므로 Next.js Metadata API(`metadata` / `generateMetadata`)로 title을 응답에 포함합니다.",
       url: "https://github.com/IT-ALL-Service/itall-react-doctor/blob/main/packages/eslint-plugin-itall-react/src/rules/no-document-title-mutation.ts",
       recommended: true,
     },
@@ -48,7 +48,7 @@ export const noDocumentTitleMutation = defineItallRule({
         context.report({
           node,
           message:
-            "Setting `document.title` after hydration is invisible to crawlers and social preview bots. Move the title into the App Router's `metadata` export (or `generateMetadata({ params })`) so it ships in the initial HTML.",
+            "hydration 이후에 설정한 `document.title`은 crawler와 social preview bot이 볼 수 없습니다. title을 App Router의 `metadata` export 또는 `generateMetadata({ params })`로 옮겨 initial HTML에 포함되게 하세요.",
         });
       },
     };
