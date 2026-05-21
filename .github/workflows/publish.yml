@@ -107,3 +107,28 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f "$MAJOR" "$GITHUB_SHA"
           git push origin "$MAJOR" --force
+
+      # GitHub Release 자동 생성. `gh release create --generate-notes` 가
+      # 직전 release 태그부터 이번 태그까지의 커밋을 모아 noisy하지 않은
+      # release notes를 만들어준다. pre-release (예: `-rc.1`) 는 prerelease
+      # 마크. 이미 release가 있으면 `gh release edit` 으로 노트만 갱신.
+      # Skipped on workflow_dispatch and dry-run.
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          PRERELEASE_FLAG=""
+          case "$TAG" in
+            *-*) PRERELEASE_FLAG="--prerelease" ;;
+          esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — refreshing notes."
+            gh release edit "$TAG" --draft=false $PRERELEASE_FLAG
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --generate-notes \
+              $PRERELEASE_FLAG
+          fi
