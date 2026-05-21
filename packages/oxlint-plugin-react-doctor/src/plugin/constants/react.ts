@@ -75,6 +75,12 @@ export const SUBSCRIPTION_METHOD_NAMES = new Set([
 // counterparts. Used to recognize a valid `return () => removeEventListener(...)`
 // cleanup form even when the subscribe call is `addEventListener` rather
 // than a `subscribe()` whose return value gets re-bound.
+//
+// `abort` covers the AbortController pattern, which is the recommended
+// modern shape for tearing down `addEventListener` registrations bound
+// via `{ signal }`: a single `controller.abort()` removes every
+// listener bound to that signal in one shot, so it IS the matching
+// "remove" call even when no literal `removeEventListener(...)` is present.
 export const UNSUBSCRIPTION_METHOD_NAMES = new Set([
   "unsubscribe",
   "removeEventListener",
@@ -83,6 +89,7 @@ export const UNSUBSCRIPTION_METHOD_NAMES = new Set([
   "unwatch",
   "unlisten",
   "unsub",
+  "abort",
 ]);
 
 // Identifier names recognized as "this is a release/teardown call"
