@@ -59,13 +59,20 @@ jobs:
 
       # Publish the sidecar ESLint plugin first so the CLI's optional
       # peer dep resolves cleanly when consumers install both packages.
+      # 두 패키지가 lock-step bump 되지 않은 경우(예: skill 만 수정 →
+      # CLI bump, plugin 은 그대로)에도 워크플로가 죽지 않도록 같은
+      # 버전이 이미 registry 에 있으면 skip.
       - name: Publish @it-all-service/eslint-plugin-itall-react
         working-directory: packages/eslint-plugin-itall-react
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VER=$(node -p "require('./package.json').version")
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry-run }}" = "true" ]; then
             pnpm publish --no-git-checks --dry-run
+          elif pnpm view "$PKG_NAME@$PKG_VER" version >/dev/null 2>&1; then
+            echo "::notice::$PKG_NAME@$PKG_VER already published — skipping"
           else
             pnpm publish --no-git-checks
           fi
@@ -75,8 +82,12 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VER=$(node -p "require('./package.json').version")
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry-run }}" = "true" ]; then
             pnpm publish --no-git-checks --dry-run
+          elif pnpm view "$PKG_NAME@$PKG_VER" version >/dev/null 2>&1; then
+            echo "::notice::$PKG_NAME@$PKG_VER already published — skipping"
           else
             pnpm publish --no-git-checks
           fi
