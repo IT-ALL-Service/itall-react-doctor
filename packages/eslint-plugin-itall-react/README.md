@@ -18,10 +18,18 @@ itall 팀 전용 React/Next.js lint 룰 모음. [`@it-all-service/react-doctor`]
 ```
 
 ```bash
-pnpm add -D @it-all-service/eslint-plugin-itall-react
+ni -D @it-all-service/eslint-plugin-itall-react
 ```
 
 CLI 쪽에서는 `optional` peer dep이라 이 plugin을 빼도 fork CLI는 그대로 동작한다(사내 룰만 비활성화).
+
+## 동작 방식
+
+컨슈머 프로젝트에서 별도 ESLint config를 수정할 필요는 없다. `@it-all-service/react-doctor`가 설치된 `@it-all-service/eslint-plugin-itall-react`를 감지하면 oxlint JS plugin으로 로드하고, `itall/*` 진단을 upstream `react-doctor/*` 진단과 같은 점수 파이프라인에 합친다.
+
+사내 룰의 사용자-facing 진단 문구와 rule description은 한국어로 유지한다. 단, `useMemo`, `queryKey`, `suppressHydrationWarning`, `Metadata API`처럼 코드 검색과 수정에 직접 필요한 기술 키워드는 원문 표기를 유지한다.
+
+이 패키지를 설치하지 않으면 CLI는 계속 실행되지만 `itall/*` 룰만 빠진다.
 
 ## 현재 룰 목록
 
@@ -403,11 +411,20 @@ type UserModel = { id: string; name: string };
 
 ## 개발
 
+기본 명령은 `@antfu/ni`의 `nr`를 사용한다. 아래 `nr` 예시는 이 패키지 디렉터리에서 실행하는 기준이다. 로컬에 `nr`가 없다면 repo root에서 같은 스크립트를 `pnpm --filter @it-all-service/eslint-plugin-itall-react <script>`로 실행한다.
+
+```bash
+nr build
+nr typecheck
+nr test
+nr gen   # rule 추가/삭제/이름변경 후 registry 재생성
+```
+
 ```bash
 pnpm --filter @it-all-service/eslint-plugin-itall-react build
 pnpm --filter @it-all-service/eslint-plugin-itall-react typecheck
 pnpm --filter @it-all-service/eslint-plugin-itall-react test
-pnpm gen   # rule 추가/삭제/이름변경 후 registry 재생성 (root에서)
+pnpm gen
 ```
 
 룰 추가 절차 (codegen 도입 후):
