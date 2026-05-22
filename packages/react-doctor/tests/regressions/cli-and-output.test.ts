@@ -161,7 +161,7 @@ export const Cart = () => {
     expect(normalizedStdout).toContain("  ⚠ Direct state mutation ×2");
     expect(normalizedStdout).toContain("    src/Cart.tsx:");
     expect(normalizedStdout.indexOf("Direct state mutation")).toBeLessThan(
-      normalizedStdout.indexOf("React Doctor"),
+      normalizedStdout.indexOf("itall-react-doctor"),
     );
     expect(normalizedStdout).not.toContain("  By category");
   });

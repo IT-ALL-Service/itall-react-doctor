@@ -7,7 +7,7 @@ import { groupBy } from "@react-doctor/core";
 import { formatRuleSummary, sortRuleGroupsByImportance } from "./render-diagnostics.js";
 
 export const writeDiagnosticsDirectory = (diagnostics: Diagnostic[]): string => {
-  const outputDirectory = join(tmpdir(), `react-doctor-${randomUUID()}`);
+  const outputDirectory = join(tmpdir(), `itall-react-doctor-${randomUUID()}`);
   mkdirSync(outputDirectory, { recursive: true });
 
   const ruleGroups = groupBy(

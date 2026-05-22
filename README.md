@@ -26,7 +26,7 @@ ni -D @it-all-service/react-doctor @it-all-service/eslint-plugin-itall-react
 ```
 
 ```bash
-pnpm exec react-doctor
+pnpm exec itall-react-doctor
 ```
 
 사내 룰이 필요 없으면 `@it-all-service/eslint-plugin-itall-react`는 생략할 수 있습니다.

@@ -63,7 +63,7 @@ export const inspectAction = async (directory: string, flags: InspectFlags): Pro
     setJsonReportDirectory(resolvedDirectory);
     if (redirectedDirectory && !isQuiet) {
       logger.dim(
-        `Redirected to ${highlighter.info(toRelativePath(resolvedDirectory, requestedDirectory))} via react-doctor config "rootDir".`,
+        `Redirected to ${highlighter.info(toRelativePath(resolvedDirectory, requestedDirectory))} via itall-react-doctor config "rootDir".`,
       );
       logger.break();
     }

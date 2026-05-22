@@ -30,16 +30,16 @@ pnpm add -D @it-all-service/react-doctor @it-all-service/eslint-plugin-itall-rea
 ## 사용
 
 ```bash
-pnpm exec react-doctor
+pnpm exec itall-react-doctor
 ```
 
 워크스페이스 안에서 돌리면 스캔할 프로젝트를 고르는 프롬프트가 뜬다. CI에선 다음 플래그 조합을 자주 쓴다:
 
 ```bash
-pnpm exec react-doctor -y --fail-on error --pr-comment
+pnpm exec itall-react-doctor -y --fail-on error --pr-comment
 ```
 
-전체 플래그는 `pnpm exec react-doctor --help` 참고.
+전체 플래그는 `pnpm exec itall-react-doctor --help` 참고.
 
 ## 상세 옵션 요약
 

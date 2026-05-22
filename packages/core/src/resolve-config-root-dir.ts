@@ -23,7 +23,7 @@ export const resolveConfigRootDir = (
 
   if (!isDirectory(resolvedRootDir)) {
     logger.warn(
-      `react-doctor config "rootDir" points to "${rawRootDir}" (resolved to ${resolvedRootDir}), which is not a directory. Ignoring.`,
+      `itall-react-doctor config "rootDir" points to "${rawRootDir}" (resolved to ${resolvedRootDir}), which is not a directory. Ignoring.`,
     );
     return null;
   }

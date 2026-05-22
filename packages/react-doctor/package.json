@@ -1,6 +1,6 @@
 {
   "name": "@it-all-service/react-doctor",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "Diagnose and fix React codebases for security, performance, correctness, accessibility, bundle-size, and architecture issues — itall fork of millionco/react-doctor with team-specific rules",
   "keywords": [
     "accessibility",
@@ -28,6 +28,7 @@
     "directory": "packages/react-doctor"
   },
   "bin": {
+    "itall-react-doctor": "./bin/react-doctor.js",
     "react-doctor": "./bin/react-doctor.js"
   },
   "files": [

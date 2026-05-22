@@ -136,6 +136,7 @@ export const buildTestProject = (options: BuildTestProjectOptions): ProjectInfo 
 export interface RuleHit {
   filePath: string;
   message: string;
+  category: string;
 }
 
 // Replaces the five near-identical `collectRuleHits` helpers that each
@@ -179,5 +180,6 @@ export const collectRuleHits = async (
     .map((diagnostic) => ({
       filePath: diagnostic.filePath,
       message: diagnostic.message,
+      category: diagnostic.category,
     }));
 };

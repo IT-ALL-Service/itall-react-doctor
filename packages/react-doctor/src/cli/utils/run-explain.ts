@@ -57,7 +57,7 @@ export const runExplain = async (
   );
 
   if (matchingDiagnostics.length === 0) {
-    logger.log(`No react-doctor diagnostics at ${filePath}:${line}.`);
+    logger.log(`No itall-react-doctor diagnostics at ${filePath}:${line}.`);
     return;
   }
 

@@ -5,6 +5,6 @@ import { VERSION } from "./version.js";
 // mode. Keeps the visual signature consistent across `inspect`, `install`,
 // and any future subcommand.
 export const printBrandedHeader = (): void => {
-  logger.log(`${highlighter.bold("react-doctor")} ${highlighter.dim(`v${VERSION}`)}`);
+  logger.log(`${highlighter.bold("itall-react-doctor")} ${highlighter.dim(`v${VERSION}`)}`);
   logger.break();
 };

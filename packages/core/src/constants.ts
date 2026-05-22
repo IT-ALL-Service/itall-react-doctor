@@ -66,7 +66,7 @@ export const OXLINT_RECOMMENDED_NODE_MAJOR = 24;
 
 export const GIT_SHOW_MAX_BUFFER_BYTES = 10 * 1024 * 1024;
 
-export const CANONICAL_GITHUB_URL = "https://github.com/millionco/react-doctor";
+export const CANONICAL_GITHUB_URL = "https://github.com/IT-ALL-Service/itall-react-doctor";
 
 export const SKILL_NAME = "react-doctor";
 

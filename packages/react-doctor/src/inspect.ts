@@ -180,7 +180,7 @@ const runInspect = async (
                 `Lint checks failed — oxlint native binding not found (Node ${process.version}).`,
               );
               logger.dim(
-                `  Upgrade to Node ${OXLINT_NODE_REQUIREMENT} or run: npx -p oxlint@latest react-doctor@latest`,
+                `  Upgrade to Node ${OXLINT_NODE_REQUIREMENT} and rerun itall-react-doctor.`,
               );
             } else {
               lintSpinner?.fail("Lint checks failed (non-fatal, skipping).");
@@ -293,7 +293,7 @@ const runInspect = async (
   if (demotedDiagnosticCount > 0) {
     logger.log(
       highlighter.gray(
-        `  ${demotedDiagnosticCount} demoted from the ${options.outputSurface} surface (e.g. design cleanup) — run \`npx react-doctor@latest .\` locally for the full list.`,
+        `  ${demotedDiagnosticCount} demoted from the ${options.outputSurface} surface (e.g. design cleanup) — run locally without PR-comment filtering for the full list.`,
       ),
     );
     logger.break();

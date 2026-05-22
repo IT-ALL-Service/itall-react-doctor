@@ -2,7 +2,7 @@
 // (128 + signal number). Used by exit-gracefully.ts on SIGINT/SIGTERM.
 export const SIGINT_EXIT_CODE = 130;
 
-export const STAGED_FILES_TEMP_DIR_PREFIX = "react-doctor-staged-";
+export const STAGED_FILES_TEMP_DIR_PREFIX = "itall-react-doctor-staged-";
 
 // Last-resort fallback when buildJsonReportError itself throws — keeps
 // stdout valid JSON so downstream parsers don't see a half-written report.
