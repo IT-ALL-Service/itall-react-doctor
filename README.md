@@ -1,6 +1,6 @@
 # itall-react-doctor
 
-IT-ALL-Service에서 사용하는 React/Next.js 코드 진단 도구입니다. [`millionco/react-doctor`](https://github.com/millionco/react-doctor)를 기반으로 하며, upstream 룰과 사내 룰을 한 번에 실행해 코드 품질 점수와 진단 결과를 보여줍니다.
+IT-ALL-Service에서 사용하는 React/Next.js 코드 진단 도구입니다. [`millionco/react-doctor`](https://github.com/millionco/react-doctor)를 기반으로 하며, upstream 룰, 사내 룰, dead-code 분석을 한 번에 실행해 코드 품질 점수와 진단 결과를 보여줍니다.
 
 ## 구성
 
