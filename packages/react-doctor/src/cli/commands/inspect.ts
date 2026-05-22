@@ -14,7 +14,7 @@ import {
   toRelativePath,
 } from "@react-doctor/core";
 import { inspect } from "../../inspect.js";
-import type { Diagnostic, InspectResult } from "@react-doctor/types";
+import type { Diagnostic, DiffInfo, InspectResult } from "@react-doctor/types";
 import { STAGED_FILES_TEMP_DIR_PREFIX } from "../utils/constants.js";
 import { getStagedSourceFiles, materializeStagedFiles } from "../utils/get-staged-files.js";
 import type { InspectFlags } from "../utils/inspect-flags.js";
@@ -167,11 +167,14 @@ export const inspectAction = async (directory: string, flags: InspectFlags): Pro
       return;
     }
 
-    const projectDirectories = await selectProjects(resolvedDirectory, flags.project, skipPrompts);
-
     const effectiveDiff = resolveEffectiveDiff(flags, userConfig);
     const explicitBaseBranch = typeof effectiveDiff === "string" ? effectiveDiff : undefined;
     const wantsDiffMode = effectiveDiff !== undefined && effectiveDiff !== false;
+    const projectDirectories = await selectProjects(
+      resolvedDirectory,
+      flags.project,
+      skipPrompts || wantsDiffMode,
+    );
     // HACK: also call getDiffInfo when we MIGHT prompt the user — without
     // it, resolveDiffMode short-circuits at !diffInfo and the
     // "Only scan changed files?" prompt never appears for users on a
@@ -204,10 +207,12 @@ export const inspectAction = async (directory: string, flags: InspectFlags): Pro
     for (const projectDirectory of projectDirectories) {
       let includePaths: string[] | undefined;
       if (isDiffMode) {
-        const projectDiffInfo =
-          projectDirectory === resolvedDirectory
-            ? diffInfo
-            : getDiffInfo(projectDirectory, explicitBaseBranch);
+        const projectDiffInfo = getDiffInfoForProject(
+          diffInfo,
+          resolvedDirectory,
+          projectDirectory,
+          explicitBaseBranch,
+        );
         if (projectDiffInfo) {
           const changedSourceFiles = filterSourceFiles(projectDiffInfo.changedFiles);
           if (changedSourceFiles.length === 0) {
@@ -278,4 +283,35 @@ export const inspectAction = async (directory: string, flags: InspectFlags): Pro
     }
     handleError(error);
   }
+};
+
+const getDiffInfoForProject = (
+  rootDiffInfo: DiffInfo | null,
+  rootDirectory: string,
+  projectDirectory: string,
+  explicitBaseBranch?: string,
+): DiffInfo | null => {
+  if (projectDirectory === rootDirectory) return rootDiffInfo;
+
+  const projectDiffInfo = getDiffInfo(projectDirectory, explicitBaseBranch);
+  if (projectDiffInfo) return projectDiffInfo;
+  if (!rootDiffInfo) return null;
+
+  const projectRelativeDirectory = path
+    .relative(rootDirectory, projectDirectory)
+    .split(path.sep)
+    .join("/");
+  if (
+    projectRelativeDirectory.length === 0 ||
+    projectRelativeDirectory.startsWith("..") ||
+    path.isAbsolute(projectRelativeDirectory)
+  ) {
+    return null;
+  }
+
+  const projectChangedFiles = rootDiffInfo.changedFiles
+    .filter((filePath) => filePath.startsWith(`${projectRelativeDirectory}/`))
+    .map((filePath) => filePath.slice(projectRelativeDirectory.length + 1));
+
+  return { ...rootDiffInfo, changedFiles: projectChangedFiles };
 };
