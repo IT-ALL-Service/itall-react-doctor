@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { inspect } from "../src/inspect.js";
-import { ERROR_PENALTY_POINTS, PERFECT_SCORE, WARNING_PENALTY_POINTS } from "@react-doctor/core";
+import { calculateScore } from "@react-doctor/core";
 import path from "node:path";
 import reactDoctorPlugin from "oxlint-plugin-react-doctor";
 
@@ -28,10 +28,6 @@ describe("inspect — score surface filter", () => {
     vi.restoreAllMocks();
   });
 
-  // itall fork regression: 외부 score API 가 사라지고 로컬 산식으로 전환된 뒤에도
-  // `design`-tag diagnostics 가 점수에 반영되지 않아야 한다 (`score` surface 사전
-  // 필터링 동작 보존). 점수 = PERFECT_SCORE - errors*ERROR_PENALTY - warnings*WARNING_PENALTY
-  // 라는 산식을 non-design diagnostics 에만 적용한 결과와 일치해야 한다.
   it("excludes `design`-tagged diagnostics from the local score input", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -48,15 +44,12 @@ describe("inspect — score surface filter", () => {
       const nonDesignDiagnostics = result.diagnostics.filter(
         (diagnostic) => !(diagnostic.plugin === "react-doctor" && hasDesignTag(diagnostic.rule)),
       );
-      const errorCount = nonDesignDiagnostics.filter((d) => d.severity === "error").length;
-      const warningCount = nonDesignDiagnostics.filter((d) => d.severity === "warning").length;
-      const expectedScore = Math.max(
-        0,
-        PERFECT_SCORE - errorCount * ERROR_PENALTY_POINTS - warningCount * WARNING_PENALTY_POINTS,
-      );
+      const expectedScore = calculateScore(nonDesignDiagnostics, {
+        checkedFileCount: result.project.sourceFileCount,
+      });
 
       expect(result.score).not.toBeNull();
-      expect(result.score?.score).toBe(expectedScore);
+      expect(result.score?.score).toBe(expectedScore.score);
     } finally {
       consoleSpy.mockRestore();
     }

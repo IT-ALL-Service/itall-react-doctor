@@ -1,25 +1,53 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
-  ERROR_PENALTY_POINTS,
+  ERROR_RULE_SCORE_WEIGHT,
   PERFECT_SCORE,
+  SCORE_AFFECTED_FILE_COMPLIANCE_WEIGHT_PERCENT,
+  SCORE_ERROR_FILE_COMPLIANCE_WEIGHT_PERCENT,
   SCORE_GOOD_THRESHOLD,
   SCORE_OK_THRESHOLD,
-  WARNING_PENALTY_POINTS,
+  SCORE_RULE_COMPLIANCE_WEIGHT_PERCENT,
+  SCORE_WEIGHT_TOTAL_PERCENT,
+  WARNING_RULE_SCORE_WEIGHT,
   calculateScore,
 } from "@react-doctor/core";
 import type { Diagnostic } from "@react-doctor/types";
 
-// itall fork: 외부 API 호출이 제거되고 로컬 weight 기반으로 점수가 계산된다.
-// 산식: max(0, PERFECT_SCORE - errors*ERROR_PENALTY - warnings*WARNING_PENALTY)
-const buildDiagnostic = (severity: Diagnostic["severity"]): Diagnostic => ({
-  filePath: "src/App.tsx",
+const buildDiagnostic = (
+  severity: Diagnostic["severity"],
+  overrides: Partial<Diagnostic> = {},
+): Diagnostic => ({
+  filePath: overrides.filePath ?? "src/App.tsx",
   plugin: "react-doctor",
-  rule: "test-rule",
+  rule: overrides.rule ?? "test-rule",
   severity,
   message: "test",
-  line: 1,
-  column: 1,
+  line: overrides.line ?? 1,
+  column: overrides.column ?? 1,
+  category: overrides.category ?? "Correctness",
 });
+
+const calculateExpectedScore = ({
+  affectedFileCount,
+  errorAffectedFileCount,
+  ruleComplianceRate,
+  checkedFileCount,
+}: {
+  affectedFileCount: number;
+  errorAffectedFileCount: number;
+  ruleComplianceRate: number;
+  checkedFileCount: number;
+}): number => {
+  const affectedFileComplianceRate = (checkedFileCount - affectedFileCount) / checkedFileCount;
+  const errorFileComplianceRate = (checkedFileCount - errorAffectedFileCount) / checkedFileCount;
+  return Math.round(
+    ((affectedFileComplianceRate * SCORE_AFFECTED_FILE_COMPLIANCE_WEIGHT_PERCENT +
+      ruleComplianceRate * SCORE_RULE_COMPLIANCE_WEIGHT_PERCENT +
+      errorFileComplianceRate * SCORE_ERROR_FILE_COMPLIANCE_WEIGHT_PERCENT) /
+      SCORE_WEIGHT_TOTAL_PERCENT) *
+      PERFECT_SCORE,
+  );
+};
 
 describe("calculateScore", () => {
   it("returns PERFECT_SCORE / Healthy when there are no diagnostics", () => {
@@ -28,38 +56,90 @@ describe("calculateScore", () => {
     expect(result.label).toBe("Healthy");
   });
 
-  it("subtracts ERROR_PENALTY_POINTS per error diagnostic", () => {
-    const errors = [buildDiagnostic("error"), buildDiagnostic("error")];
-    const result = calculateScore(errors);
-    expect(result.score).toBe(PERFECT_SCORE - 2 * ERROR_PENALTY_POINTS);
-  });
-
-  it("subtracts WARNING_PENALTY_POINTS per warning diagnostic", () => {
-    const warnings = [
-      buildDiagnostic("warning"),
-      buildDiagnostic("warning"),
-      buildDiagnostic("warning"),
+  it("scores a rule by affected file ratio", () => {
+    const diagnostics = [
+      buildDiagnostic("warning", { filePath: "src/App.tsx" }),
+      buildDiagnostic("warning", { filePath: "src/Page.tsx" }),
     ];
-    const result = calculateScore(warnings);
-    expect(result.score).toBe(PERFECT_SCORE - 3 * WARNING_PENALTY_POINTS);
+
+    const result = calculateScore(diagnostics, { checkedFileCount: 10 });
+
+    expect(result.score).toBe(
+      calculateExpectedScore({
+        affectedFileCount: 2,
+        errorAffectedFileCount: 0,
+        ruleComplianceRate: 0.8,
+        checkedFileCount: 10,
+      }),
+    );
   });
 
-  it("clamps to 0 when penalties exceed PERFECT_SCORE", () => {
-    const manyErrors = Array.from({ length: 50 }, () => buildDiagnostic("error"));
-    const result = calculateScore(manyErrors);
+  it("counts the same rule once per affected file", () => {
+    const diagnostics = [
+      buildDiagnostic("warning", { filePath: "src/App.tsx", line: 1 }),
+      buildDiagnostic("warning", { filePath: "src/App.tsx", line: 20 }),
+    ];
+
+    const result = calculateScore(diagnostics, { checkedFileCount: 10 });
+
+    expect(result.score).toBe(
+      calculateExpectedScore({
+        affectedFileCount: 1,
+        errorAffectedFileCount: 0,
+        ruleComplianceRate: 0.9,
+        checkedFileCount: 10,
+      }),
+    );
+  });
+
+  it("weights error rules more heavily than warning rules", () => {
+    const diagnostics = [
+      buildDiagnostic("error", { filePath: "src/App.tsx", rule: "unsafe-effect" }),
+      buildDiagnostic("error", { filePath: "src/Page.tsx", rule: "unsafe-effect" }),
+      buildDiagnostic("warning", { filePath: "src/A.tsx", rule: "naming" }),
+      buildDiagnostic("warning", { filePath: "src/B.tsx", rule: "naming" }),
+      buildDiagnostic("warning", { filePath: "src/C.tsx", rule: "naming" }),
+      buildDiagnostic("warning", { filePath: "src/D.tsx", rule: "naming" }),
+      buildDiagnostic("warning", { filePath: "src/E.tsx", rule: "naming" }),
+    ];
+
+    const result = calculateScore(diagnostics, { checkedFileCount: 10 });
+    const ruleComplianceRate =
+      (0.8 * ERROR_RULE_SCORE_WEIGHT + 0.5 * WARNING_RULE_SCORE_WEIGHT) /
+      (ERROR_RULE_SCORE_WEIGHT + WARNING_RULE_SCORE_WEIGHT);
+
+    expect(result.score).toBe(
+      calculateExpectedScore({
+        affectedFileCount: 7,
+        errorAffectedFileCount: 2,
+        ruleComplianceRate,
+        checkedFileCount: 10,
+      }),
+    );
+  });
+
+  it("returns 0 when every checked file violates an error rule", () => {
+    const diagnostics = Array.from({ length: 10 }, (_, diagnosticIndex) =>
+      buildDiagnostic("error", { filePath: `src/${diagnosticIndex}.tsx` }),
+    );
+
+    const result = calculateScore(diagnostics, { checkedFileCount: 10 });
+
     expect(result.score).toBe(0);
     expect(result.label).toBe("Critical");
   });
 
   it('labels "Needs attention" between SCORE_OK_THRESHOLD and SCORE_GOOD_THRESHOLD', () => {
-    // Two errors + two warnings = 100 - 20 - 6 = 74 (just under Healthy at 75)
-    const mixed = [
-      buildDiagnostic("error"),
-      buildDiagnostic("error"),
-      buildDiagnostic("warning"),
-      buildDiagnostic("warning"),
+    const diagnostics = [
+      buildDiagnostic("error", { filePath: "src/App.tsx", rule: "unsafe-effect" }),
+      buildDiagnostic("warning", { filePath: "src/A.tsx", rule: "naming" }),
+      buildDiagnostic("warning", { filePath: "src/B.tsx", rule: "naming" }),
+      buildDiagnostic("warning", { filePath: "src/C.tsx", rule: "naming" }),
+      buildDiagnostic("warning", { filePath: "src/D.tsx", rule: "naming" }),
     ];
-    const result = calculateScore(mixed);
+
+    const result = calculateScore(diagnostics, { checkedFileCount: 10 });
+
     expect(result.score).toBeLessThan(SCORE_GOOD_THRESHOLD);
     expect(result.score).toBeGreaterThanOrEqual(SCORE_OK_THRESHOLD);
     expect(result.label).toBe("Needs attention");

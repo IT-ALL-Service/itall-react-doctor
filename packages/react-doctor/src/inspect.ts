@@ -214,7 +214,9 @@ const runInspect = async (
   // still flow through `result.diagnostics` for CLI/JSON consumers.
   // `noScoreMessage` 는 lint 자체가 실패해 score 가 무의미할 때만 표시.
   const scoreDiagnostics = filterDiagnosticsForSurface(diagnostics, "score", userConfig);
-  const scoreResult: ScoreResult | null = didLintFail ? null : calculateScore(scoreDiagnostics);
+  const scoreResult: ScoreResult | null = didLintFail
+    ? null
+    : calculateScore(scoreDiagnostics, { checkedFileCount: lintSourceFileCount });
   const noScoreMessage = "Score unavailable — lint check failed.";
 
   const skippedCheckReasons: Record<string, string> = {};
