@@ -35,7 +35,7 @@ const getDoctorFace = (score: number): string[] => {
 };
 
 // itall fork: 외부 도메인 브랜딩을 제거하고 fork 정체성을 명시.
-const BRANDING_LINE = `itall React Doctor ${highlighter.dim("(offline fork)")}`;
+const BRANDING_LINE = `itall-react-doctor ${highlighter.dim("(offline fork)")}`;
 
 const buildFaceRenderedLines = (score: number): string[] => {
   const [eyes, mouth] = getDoctorFace(score);

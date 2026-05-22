@@ -41,6 +41,7 @@ export async function run(id: string) {
     });
     const hits = await collectRuleHits(projectDir, "async-cheap-condition-before-await");
     expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]?.category).toBe("사내 룰");
   });
 
   it("does NOT flag the recommended cheap-first ordering", async () => {

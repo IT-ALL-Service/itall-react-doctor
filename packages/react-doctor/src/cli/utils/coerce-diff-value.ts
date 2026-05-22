@@ -15,7 +15,7 @@ export const coerceDiffValue = (value: unknown): boolean | string | undefined =>
   // `--json` mode (where the logger is silenced to keep stdout a
   // single valid JSON document).
   process.stderr.write(
-    `[react-doctor] invalid diff value (expected boolean or string): ${typeof value}. Falling back to no diff.\n`,
+    `[itall-react-doctor] invalid diff value (expected boolean or string): ${typeof value}. Falling back to no diff.\n`,
   );
   return undefined;
 };

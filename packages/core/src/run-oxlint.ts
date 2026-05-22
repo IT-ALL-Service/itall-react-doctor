@@ -56,6 +56,7 @@ const PLUGIN_CATEGORY_MAP: Record<string, string> = {
   "react-hooks": "Correctness",
   "react-hooks-js": "React Compiler",
   "react-doctor": "Other",
+  itall: "사내 룰",
   "jsx-a11y": "Accessibility",
   effect: "State & Effects",
   // Plugins users commonly enable in their own oxlint / eslint config
@@ -402,7 +403,7 @@ const validateRuleRegistration = (): void => {
       .filter((entry): entry is string => entry !== null)
       .join("; ");
     // HACK: warn rather than throw — never block the user's scan over a metadata gap.
-    console.warn(`[react-doctor] rule-registration drift: ${detail}`);
+    console.warn(`[itall-react-doctor] rule-registration drift: ${detail}`);
   }
 };
 

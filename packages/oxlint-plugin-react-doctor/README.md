@@ -58,13 +58,13 @@ Each rule can be set to `"error"`, `"warn"`, or `"off"`:
 
 ## Want the CLI too?
 
-This package only ships the oxlint plugin. To run React Doctor's full scan (with scoring, JSON reports, agent integration, etc.), use the main CLI:
+This package only ships the oxlint plugin. To run itall-react-doctor's full scan (with scoring, JSON reports, agent integration, etc.), use the main CLI:
 
 ```bash
-npx react-doctor@latest
+npx @it-all-service/react-doctor@latest
 ```
 
-See the [React Doctor README](https://github.com/millionco/react-doctor#readme) for the full feature set.
+See the [itall-react-doctor README](https://github.com/IT-ALL-Service/itall-react-doctor#readme) for the full feature set.
 
 ## License
 

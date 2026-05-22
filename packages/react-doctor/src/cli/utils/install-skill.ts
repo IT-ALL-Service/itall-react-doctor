@@ -22,6 +22,8 @@ interface InstallSkillOptions {
   detectedAgents?: SkillAgentType[];
 }
 
+const SKILL_DISPLAY_NAME = "itall-react-doctor";
+
 const getSkillSourceDirectory = (): string => {
   const distDirectory = path.dirname(fileURLToPath(import.meta.url));
   return path.join(distDirectory, "skills", SKILL_NAME);
@@ -32,7 +34,7 @@ export const runInstallSkill = async (options: InstallSkillOptions = {}): Promis
   const sourceDir = options.sourceDir ?? getSkillSourceDirectory();
 
   if (!existsSync(path.join(sourceDir, SKILL_MANIFEST_FILE))) {
-    logger.error(`Could not locate the ${SKILL_NAME} skill bundled with this package.`);
+    logger.error(`Could not locate the ${SKILL_DISPLAY_NAME} skill bundled with this package.`);
     process.exitCode = 1;
     return;
   }
@@ -56,7 +58,7 @@ export const runInstallSkill = async (options: InstallSkillOptions = {}): Promis
         await prompts({
           type: "multiselect",
           name: "agents",
-          message: `Install the ${highlighter.info(SKILL_NAME)} skill for:`,
+          message: `Install the ${highlighter.info(SKILL_DISPLAY_NAME)} skill for:`,
           choices: detectedAgents.map((agent) => ({
             title: getSkillAgentConfig(agent).displayName,
             value: agent,
@@ -70,15 +72,15 @@ export const runInstallSkill = async (options: InstallSkillOptions = {}): Promis
   if (selectedAgents.length === 0) return;
 
   if (options.dryRun) {
-    logger.log(`Dry run — would install ${SKILL_NAME} skill for:`);
+    logger.log(`Dry run — would install ${SKILL_DISPLAY_NAME} skill for:`);
     for (const agent of selectedAgents) {
       logger.dim(`  - ${getSkillAgentConfig(agent).displayName}`);
     }
-    logger.dim(`  Source: ${sourceDir}`);
+    logger.dim(`  Source: bundled ${SKILL_DISPLAY_NAME} skill`);
     return;
   }
 
-  const installSpinner = spinner(`Installing ${SKILL_NAME} skill...`).start();
+  const installSpinner = spinner(`Installing ${SKILL_DISPLAY_NAME} skill...`).start();
   try {
     const installResult = await installSkillsFromSource({
       source: sourceDir,
@@ -89,7 +91,7 @@ export const runInstallSkill = async (options: InstallSkillOptions = {}): Promis
 
     if (installResult.skills.length === 0) {
       throw new Error(
-        `Could not parse ${SKILL_MANIFEST_FILE} for ${SKILL_NAME} (missing or invalid frontmatter).`,
+        `Could not parse ${SKILL_MANIFEST_FILE} for ${SKILL_DISPLAY_NAME} (missing or invalid frontmatter).`,
       );
     }
     if (installResult.failed.length > 0) {
@@ -101,10 +103,10 @@ export const runInstallSkill = async (options: InstallSkillOptions = {}): Promis
     }
 
     installSpinner.succeed(
-      `${SKILL_NAME} skill installed for ${selectedAgents.map((agent) => getSkillAgentConfig(agent).displayName).join(", ")}.`,
+      `${SKILL_DISPLAY_NAME} skill installed for ${selectedAgents.map((agent) => getSkillAgentConfig(agent).displayName).join(", ")}.`,
     );
   } catch (error) {
-    installSpinner.fail(`Failed to install ${SKILL_NAME} skill.`);
+    installSpinner.fail(`Failed to install ${SKILL_DISPLAY_NAME} skill.`);
     throw error;
   }
 };

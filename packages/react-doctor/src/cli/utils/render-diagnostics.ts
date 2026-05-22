@@ -211,7 +211,7 @@ const printHiddenDiagnosticsSummary = (hiddenRuleGroups: [string, Diagnostic[]][
   });
 
   logger.log(`  ${renderedParts.join("  ")}`);
-  grayLine("    Run `npx react-doctor@latest . --verbose` to get all details");
+  grayLine("    Run again with `--verbose` to get all details");
   logger.break();
 };
 

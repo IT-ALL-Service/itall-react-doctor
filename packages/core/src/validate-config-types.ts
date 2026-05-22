@@ -40,7 +40,7 @@ const SEVERITY_FIELD_NAMES = ["rules", "categories"] as const satisfies Readonly
 // `--json` mode (where the logger is silenced to keep stdout a single
 // valid JSON document). Same pattern as `coerceDiffValue` in cli.ts.
 const warnConfigField = (message: string): void => {
-  process.stderr.write(`[react-doctor] ${message}\n`);
+  process.stderr.write(`[itall-react-doctor] ${message}\n`);
 };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>

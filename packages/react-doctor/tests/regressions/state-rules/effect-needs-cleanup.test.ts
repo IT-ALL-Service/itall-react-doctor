@@ -353,6 +353,66 @@ export const Subscribe = () => {
     expect(hits).toHaveLength(0);
   });
 
+  // Regression for #310: AbortController is the modern, idiomatic way to
+  // tear down many `addEventListener` registrations in one call. A single
+  // `controller.abort()` removes every listener that was bound via
+  // `{ signal: controller.signal }`, so the cleanup return IS valid even
+  // though no literal `removeEventListener(...)` appears.
+  it("does NOT flag `addEventListener({ signal })` cleaned up via `controller.abort()`", async () => {
+    const projectDir = setupReactProject(tempRoot, "effect-needs-cleanup-abort-controller", {
+      files: {
+        "src/FileDrop.tsx": `import { useEffect } from "react";
+
+declare const handleDragEnter: (event: DragEvent) => void;
+declare const handleDragLeave: (event: DragEvent) => void;
+declare const handleDragOver: (event: DragEvent) => void;
+declare const handleDrop: (event: DragEvent) => void;
+
+export const FileDrop = () => {
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    window.addEventListener("dragenter", handleDragEnter, { signal });
+    window.addEventListener("dragleave", handleDragLeave, { signal });
+    window.addEventListener("dragover", handleDragOver, { signal });
+    window.addEventListener("drop", handleDrop, { signal });
+    return () => controller.abort();
+  }, []);
+  return <span />;
+};
+`,
+      },
+    });
+
+    const hits = await collectRuleHits(projectDir, "effect-needs-cleanup");
+    expect(hits).toHaveLength(0);
+  });
+
+  it("does NOT flag `addEventListener({ signal })` cleaned up via a block calling `controller.abort()`", async () => {
+    const projectDir = setupReactProject(tempRoot, "effect-needs-cleanup-abort-controller-block", {
+      files: {
+        "src/FileDrop.tsx": `import { useEffect } from "react";
+
+declare const onResize: () => void;
+
+export const FileDrop = () => {
+  useEffect(() => {
+    const controller = new AbortController();
+    window.addEventListener("resize", onResize, { signal: controller.signal });
+    return () => {
+      controller.abort();
+    };
+  }, []);
+  return <span />;
+};
+`,
+      },
+    });
+
+    const hits = await collectRuleHits(projectDir, "effect-needs-cleanup");
+    expect(hits).toHaveLength(0);
+  });
+
   // HACK: ensure the broader walk does NOT credit cleanup returns from a
   // *nested* function expression (e.g. an inner callback) as the effect's
   // own cleanup. The walker stops at function boundaries; this protects

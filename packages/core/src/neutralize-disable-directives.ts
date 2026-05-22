@@ -114,8 +114,8 @@ export const neutralizeDisableDirectives = (
         // Silently swallowing left source files with `eslint_disable` /
         // `oxlint_disable` (neutralized form) and no signal anything broke.
         process.stderr.write(
-          `[react-doctor] Failed to restore inline disable directives in ${absolutePath}: ${error instanceof Error ? error.message : String(error)}\n` +
-            `[react-doctor] Run: git checkout -- ${absolutePath}\n`,
+          `[itall-react-doctor] Failed to restore inline disable directives in ${absolutePath}: ${error instanceof Error ? error.message : String(error)}\n` +
+            `[itall-react-doctor] Run: git checkout -- ${absolutePath}\n`,
         );
       }
     }
