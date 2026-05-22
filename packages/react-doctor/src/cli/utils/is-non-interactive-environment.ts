@@ -21,14 +21,20 @@ const NON_INTERACTIVE_ENVIRONMENT_VARIABLES = [
   "CIRCLECI",
   "TRAVIS",
   "DRONE",
+  "GIT_DIR",
+];
+
+const AGENT_ENVIRONMENT_VARIABLES = [
   "CLAUDECODE",
   "CLAUDE_CODE",
   "CURSOR_AGENT",
   "CODEX_CI",
   "OPENCODE",
   "AMP_HOME",
-  "GIT_DIR",
 ];
 
 export const isNonInteractiveEnvironment = (): boolean =>
   NON_INTERACTIVE_ENVIRONMENT_VARIABLES.some((envVariable) => Boolean(process.env[envVariable]));
+
+export const isAgentEnvironment = (): boolean =>
+  AGENT_ENVIRONMENT_VARIABLES.some((envVariable) => Boolean(process.env[envVariable]));

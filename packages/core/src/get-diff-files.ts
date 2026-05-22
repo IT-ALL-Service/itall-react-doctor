@@ -103,7 +103,7 @@ export const getDiffInfo = (directory: string, explicitBaseBranch?: string): Dif
 
   if (currentBranch !== null && currentBranch === baseBranch) {
     const uncommittedFiles = getUncommittedChangedFiles(directory);
-    if (uncommittedFiles.length === 0) return null;
+    if (uncommittedFiles.length === 0 && !explicitBaseBranch) return null;
     return { currentBranch, baseBranch, changedFiles: uncommittedFiles, isCurrentChanges: true };
   }
 

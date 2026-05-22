@@ -1,4 +1,7 @@
-import { isNonInteractiveEnvironment } from "./is-non-interactive-environment.js";
+import {
+  isAgentEnvironment,
+  isNonInteractiveEnvironment,
+} from "./is-non-interactive-environment.js";
 
 // Returns true only when the stream `ora` will render to looks safe to
 // drive an animated spinner. We default to `process.stderr` because that
@@ -29,5 +32,6 @@ export const isSpinnerInteractive = (stream: NodeJS.WriteStream = process.stderr
   if (!columnCount || columnCount <= 0) return false;
   if (process.env.TERM === "dumb") return false;
   if (isNonInteractiveEnvironment()) return false;
+  if (isAgentEnvironment()) return false;
   return true;
 };

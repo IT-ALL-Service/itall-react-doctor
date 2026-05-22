@@ -16,16 +16,14 @@ export const selectProjects = async (
 
   if (packages.length === 0) return [rootDirectory];
   if (packages.length === 1) {
-    logger.log(
-      `${highlighter.success("✔")} Select projects to scan ${highlighter.dim("›")} ${packages[0].name}`,
-    );
+    printSelectedProjects(packages);
     return [packages[0].directory];
   }
 
   if (projectFlag) return resolveProjectFlag(projectFlag, packages);
 
   if (skipPrompts) {
-    printDiscoveredProjects(packages);
+    printSelectedProjects(packages);
     return packages.map((workspacePackage) => workspacePackage.directory);
   }
 
@@ -59,9 +57,10 @@ const resolveProjectFlag = (
   return resolvedDirectories;
 };
 
-const printDiscoveredProjects = (packages: WorkspacePackage[]): void => {
+const printSelectedProjects = (packages: WorkspacePackage[]): void => {
+  const label = packages.length === 1 ? "Scanning project" : "Scanning projects";
   logger.log(
-    `${highlighter.success("✔")} Select projects to scan ${highlighter.dim("›")} ${packages.map((workspacePackage) => workspacePackage.name).join(", ")}`,
+    `${highlighter.success("✔")} ${label} ${highlighter.dim("›")} ${packages.map((workspacePackage) => workspacePackage.name).join(", ")}`,
   );
 };
 
