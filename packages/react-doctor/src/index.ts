@@ -142,6 +142,7 @@ export const diagnose = async (
 
   const lintIncludePaths =
     computeJsxIncludePaths(includePaths) ?? resolveLintIncludePaths(resolvedDirectory, userConfig);
+  const checkedFileCount = lintIncludePaths?.length ?? projectInfo.sourceFileCount;
   const readFileLinesSync = createNodeReadFileLinesSync(resolvedDirectory);
 
   const effectiveLint = options.lint ?? userConfig?.lint ?? true;
@@ -176,7 +177,7 @@ export const diagnose = async (
   });
   const elapsedMilliseconds = globalThis.performance.now() - startTime;
   // itall fork: 로컬 산식이므로 await 불필요.
-  const score = calculateScore(diagnostics);
+  const score = calculateScore(diagnostics, { checkedFileCount });
 
   return { diagnostics, score, project: projectInfo, elapsedMilliseconds };
 };

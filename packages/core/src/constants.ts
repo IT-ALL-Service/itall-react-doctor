@@ -22,14 +22,21 @@ export const SCORE_OK_THRESHOLD = 50;
 
 export const SCORE_BAR_WIDTH_CHARS = 50;
 
-// itall fork: 외부 scoring API 호출을 제거하고 로컬에서 점수를 산출.
-// 산식 = max(0, PERFECT_SCORE - errors*ERROR_PENALTY - warnings*WARNING_PENALTY).
-// 입력 diagnostics는 호출부에서 `filterDiagnosticsForSurface("score", ...)` 를
-// 거쳐 weak-signal tag (`design` 등) 가 빠진 상태로 들어온다. 산식이 보수적
-// 이라 한두 개 error만 있어도 Healthy 임계값(75) 아래로 떨어진다 — 의도된 동작.
-export const ERROR_PENALTY_POINTS = 10;
+// itall fork: 외부 scoring API 호출을 제거하고 로컬에서 점수를 산출한다.
+// 점수는 진단 수 감점이 아니라 룰별 affected-file 준수율의 weighted average다.
+export const ERROR_RULE_SCORE_WEIGHT = 3;
 
-export const WARNING_PENALTY_POINTS = 3;
+export const WARNING_RULE_SCORE_WEIGHT = 1;
+
+export const MIN_SCORE_CHECKED_FILE_COUNT = 1;
+
+export const SCORE_AFFECTED_FILE_COMPLIANCE_WEIGHT_PERCENT = 65;
+
+export const SCORE_RULE_COMPLIANCE_WEIGHT_PERCENT = 20;
+
+export const SCORE_ERROR_FILE_COMPLIANCE_WEIGHT_PERCENT = 15;
+
+export const SCORE_WEIGHT_TOTAL_PERCENT = 100;
 
 // HACK: Windows CreateProcessW limits total command-line length to 32,767 chars.
 // Use a conservative threshold to leave room for the executable path and quoting overhead.

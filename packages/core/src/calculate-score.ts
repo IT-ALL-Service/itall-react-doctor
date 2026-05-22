@@ -1,37 +1,154 @@
 import {
-  ERROR_PENALTY_POINTS,
+  ERROR_RULE_SCORE_WEIGHT,
+  MIN_SCORE_CHECKED_FILE_COUNT,
   PERFECT_SCORE,
+  SCORE_AFFECTED_FILE_COMPLIANCE_WEIGHT_PERCENT,
+  SCORE_ERROR_FILE_COMPLIANCE_WEIGHT_PERCENT,
   SCORE_GOOD_THRESHOLD,
   SCORE_OK_THRESHOLD,
-  WARNING_PENALTY_POINTS,
+  SCORE_RULE_COMPLIANCE_WEIGHT_PERCENT,
+  SCORE_WEIGHT_TOTAL_PERCENT,
+  WARNING_RULE_SCORE_WEIGHT,
 } from "./constants.js";
 import type { Diagnostic, ScoreResult } from "@react-doctor/types";
 
-// 사내 fork는 외부 scoring API 의존을 끊고 로컬에서 점수를 산출한다.
-// 입력 diagnostics는 호출부에서 `filterDiagnosticsForSurface("score", ...)`
-// 를 거친 상태로 들어와야 한다 — design 같은 weak-signal tag가 빠진 뒤
-// 점수가 매겨지도록.
-//
-// 산식: PERFECT_SCORE - (errors × ERROR_PENALTY) - (warnings × WARNING_PENALTY)
-//       0 미만은 0으로 clamp.
-// 라벨 임계값: SCORE_GOOD_THRESHOLD(75) / SCORE_OK_THRESHOLD(50).
-// upstream 라벨 문구 ("Healthy"/"Needs attention"/"Critical") 는 score 렌더링
-// 컬러링 로직(colorize-by-score) 과 일치시키기 위해 그대로 유지한다.
-export const calculateScore = (diagnostics: Diagnostic[]): ScoreResult => {
-  let errorCount = 0;
-  let warningCount = 0;
-  for (const diagnostic of diagnostics) {
-    if (diagnostic.severity === "error") errorCount += 1;
-    else if (diagnostic.severity === "warning") warningCount += 1;
+export interface CalculateScoreOptions {
+  checkedFileCount?: number;
+}
+
+interface RuleScoreAccumulator {
+  severity: Diagnostic["severity"];
+  filePaths: Set<string>;
+}
+
+interface ScoreComplianceRates {
+  affectedFileComplianceRate: number;
+  ruleComplianceRate: number;
+  errorFileComplianceRate: number;
+}
+
+const getRuleKey = (diagnostic: Diagnostic): string => `${diagnostic.plugin}/${diagnostic.rule}`;
+
+const getRuleWeight = (severity: Diagnostic["severity"]): number =>
+  severity === "error" ? ERROR_RULE_SCORE_WEIGHT : WARNING_RULE_SCORE_WEIGHT;
+
+const resolveCheckedFileCount = (
+  diagnostics: Diagnostic[],
+  options: CalculateScoreOptions,
+): number => {
+  if (
+    typeof options.checkedFileCount === "number" &&
+    Number.isFinite(options.checkedFileCount) &&
+    options.checkedFileCount > 0
+  ) {
+    return options.checkedFileCount;
   }
 
-  const penalty = errorCount * ERROR_PENALTY_POINTS + warningCount * WARNING_PENALTY_POINTS;
-  const score = Math.max(0, PERFECT_SCORE - penalty);
+  const affectedFiles = new Set(diagnostics.map((diagnostic) => diagnostic.filePath));
+  return Math.max(MIN_SCORE_CHECKED_FILE_COUNT, affectedFiles.size);
+};
 
+const collectRuleScoreAccumulators = (
+  diagnostics: Diagnostic[],
+): Map<string, RuleScoreAccumulator> => {
+  const accumulators = new Map<string, RuleScoreAccumulator>();
+
+  for (const diagnostic of diagnostics) {
+    const ruleKey = getRuleKey(diagnostic);
+    const accumulator = accumulators.get(ruleKey);
+    if (accumulator) {
+      accumulator.filePaths.add(diagnostic.filePath);
+      if (diagnostic.severity === "error") {
+        accumulator.severity = "error";
+      }
+      continue;
+    }
+
+    accumulators.set(ruleKey, {
+      severity: diagnostic.severity,
+      filePaths: new Set([diagnostic.filePath]),
+    });
+  }
+
+  return accumulators;
+};
+
+const collectAffectedFiles = (
+  diagnostics: Diagnostic[],
+  severity?: Diagnostic["severity"],
+): Set<string> => {
+  const affectedFiles = new Set<string>();
+  for (const diagnostic of diagnostics) {
+    if (severity !== undefined && diagnostic.severity !== severity) {
+      continue;
+    }
+    affectedFiles.add(diagnostic.filePath);
+  }
+  return affectedFiles;
+};
+
+const calculateRuleComplianceRate = (
+  accumulators: Map<string, RuleScoreAccumulator>,
+  checkedFileCount: number,
+): number => {
+  let weightedComplianceTotal = 0;
+  let totalWeight = 0;
+
+  for (const accumulator of accumulators.values()) {
+    const affectedFileCount = Math.min(accumulator.filePaths.size, checkedFileCount);
+    const complianceRate = (checkedFileCount - affectedFileCount) / checkedFileCount;
+    const weight = getRuleWeight(accumulator.severity);
+
+    weightedComplianceTotal += complianceRate * weight;
+    totalWeight += weight;
+  }
+
+  return weightedComplianceTotal / totalWeight;
+};
+
+const calculateComplianceRates = (
+  diagnostics: Diagnostic[],
+  checkedFileCount: number,
+): ScoreComplianceRates => {
+  const affectedFiles = collectAffectedFiles(diagnostics);
+  const errorAffectedFiles = collectAffectedFiles(diagnostics, "error");
+  const accumulators = collectRuleScoreAccumulators(diagnostics);
+
+  return {
+    affectedFileComplianceRate:
+      (checkedFileCount - Math.min(affectedFiles.size, checkedFileCount)) / checkedFileCount,
+    ruleComplianceRate: calculateRuleComplianceRate(accumulators, checkedFileCount),
+    errorFileComplianceRate:
+      (checkedFileCount - Math.min(errorAffectedFiles.size, checkedFileCount)) / checkedFileCount,
+  };
+};
+
+const getScoreLabel = (score: number): string => {
   let label: string;
   if (score >= SCORE_GOOD_THRESHOLD) label = "Healthy";
   else if (score >= SCORE_OK_THRESHOLD) label = "Needs attention";
   else label = "Critical";
+  return label;
+};
+
+export const calculateScore = (
+  diagnostics: Diagnostic[],
+  options: CalculateScoreOptions = {},
+): ScoreResult => {
+  if (diagnostics.length === 0) {
+    return { score: PERFECT_SCORE, label: getScoreLabel(PERFECT_SCORE) };
+  }
+
+  const checkedFileCount = resolveCheckedFileCount(diagnostics, options);
+  const { affectedFileComplianceRate, ruleComplianceRate, errorFileComplianceRate } =
+    calculateComplianceRates(diagnostics, checkedFileCount);
+  const weightedComplianceRate =
+    (affectedFileComplianceRate * SCORE_AFFECTED_FILE_COMPLIANCE_WEIGHT_PERCENT +
+      ruleComplianceRate * SCORE_RULE_COMPLIANCE_WEIGHT_PERCENT +
+      errorFileComplianceRate * SCORE_ERROR_FILE_COMPLIANCE_WEIGHT_PERCENT) /
+    SCORE_WEIGHT_TOTAL_PERCENT;
+  const score = Math.round(weightedComplianceRate * PERFECT_SCORE);
+  const label = getScoreLabel(score);
 
   return { score, label };
 };
