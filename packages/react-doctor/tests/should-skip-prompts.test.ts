@@ -35,13 +35,13 @@ const NON_INTERACTIVE_ENV_VARS = [
   "CIRCLECI",
   "TRAVIS",
   "DRONE",
+  "GIT_DIR",
   "CLAUDECODE",
   "CLAUDE_CODE",
   "CURSOR_AGENT",
   "CODEX_CI",
   "OPENCODE",
   "AMP_HOME",
-  "GIT_DIR",
 ] as const;
 
 describe("shouldSkipPrompts", () => {
@@ -101,13 +101,20 @@ describe("shouldSkipPrompts", () => {
     expect(shouldSkipPrompts()).toBe(true);
   });
 
-  it("returns true when CLAUDECODE env var is set (agent shell)", () => {
+  it("returns false when CLAUDECODE env var is set with an interactive TTY", () => {
     process.env.CLAUDECODE = "1";
-    expect(shouldSkipPrompts()).toBe(true);
+    expect(shouldSkipPrompts()).toBe(false);
   });
 
-  it("returns true when CURSOR_AGENT env var is set (agent shell)", () => {
+  it("returns false when CURSOR_AGENT env var is set with an interactive TTY", () => {
     process.env.CURSOR_AGENT = "1";
+    expect(shouldSkipPrompts()).toBe(false);
+  });
+
+  it("returns true when an agent env var is set without an interactive TTY", () => {
+    process.env.CODEX_CI = "1";
+    ttyHandle.restore();
+    ttyHandle = stubProcessStdinIsTty(false);
     expect(shouldSkipPrompts()).toBe(true);
   });
 

@@ -108,4 +108,19 @@ describe("issue #298: --diff respects explicit base on detached HEAD", () => {
     expect(diffInfo?.baseBranch).toBe("main");
     expect(diffInfo?.changedFiles).toEqual([changedFilePath]);
   });
+
+  it("returns an empty diff instead of null when an explicit base has no changes", () => {
+    const repoDir = path.join(tempRoot, "explicit-base-no-changes");
+    fs.mkdirSync(repoDir, { recursive: true });
+    writeFile(path.join(repoDir, "src", "app.tsx"), "export const App = () => null;\n");
+    initGitRepo(repoDir);
+    commitAll(repoDir, "init");
+
+    const diffInfo = getDiffInfo(repoDir, "main");
+    expect(diffInfo).not.toBeNull();
+    expect(diffInfo?.currentBranch).toBe("main");
+    expect(diffInfo?.baseBranch).toBe("main");
+    expect(diffInfo?.changedFiles).toEqual([]);
+    expect(diffInfo?.isCurrentChanges).toBe(true);
+  });
 });
