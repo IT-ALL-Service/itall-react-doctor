@@ -204,7 +204,7 @@ const runInspect = async (
                 `Lint checks failed — oxlint native binding not found (Node ${process.version}).`,
               );
               logger.dim(
-                `  Upgrade to Node ${OXLINT_NODE_REQUIREMENT} and rerun itall-react-doctor.`,
+                `  Upgrade to Node ${OXLINT_NODE_REQUIREMENT} and rerun react-doctor.`,
               );
             } else {
               lintSpinner?.fail("Lint checks failed (non-fatal, skipping).");

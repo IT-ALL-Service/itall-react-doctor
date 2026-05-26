@@ -11,7 +11,7 @@ process.on("SIGINT", exitGracefully);
 process.on("SIGTERM", exitGracefully);
 
 const program = new Command()
-  .name("itall-react-doctor")
+  .name("react-doctor")
   .description("Diagnose React/Next.js codebase health with ITALL rules")
   .version(VERSION, "-v, --version", "display the version number")
   .argument("[directory]", "project directory to scan", ".")
@@ -81,7 +81,7 @@ program
   .action(installAction);
 
 // HACK: when stdout is piped into a process that closes early (e.g.
-// `itall-react-doctor . | head`), Node throws an uncaught EPIPE on the next
+// `react-doctor . | head`), Node throws an uncaught EPIPE on the next
 // write. Exit cleanly instead of dumping a stack trace.
 process.stdout.on("error", (error: NodeJS.ErrnoException) => {
   if (error.code === "EPIPE") process.exit(0);
