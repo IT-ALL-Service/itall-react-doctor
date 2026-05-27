@@ -42,7 +42,7 @@ export const printProjectDetection = (
   }
 
   if (userConfig) {
-    completeStep(`Loaded ${highlighter.info("itall-react-doctor config")}.`);
+    completeStep(`Loaded ${highlighter.info("react-doctor config")}.`);
   }
 
   logger.break();

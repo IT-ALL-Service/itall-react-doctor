@@ -2,6 +2,7 @@ import { performance } from "node:perf_hooks";
 import {
   OXLINT_NODE_REQUIREMENT,
   calculateScore,
+  checkDeadCode,
   combineDiagnostics,
   computeJsxIncludePaths,
   filterDiagnosticsForSurface,
@@ -37,6 +38,7 @@ import { isSpinnerSilent, setSpinnerSilent, spinner } from "./cli/utils/spinner.
 
 interface ResolvedInspectOptions {
   lint: boolean;
+  deadCode: boolean;
   verbose: boolean;
   scoreOnly: boolean;
   // itall fork: `offline` 는 deprecation noop. CLI 플래그 호환을 위해 필드만 유지.
@@ -63,6 +65,7 @@ const mergeInspectOptions = (
   userConfig: ReactDoctorConfig | null,
 ): ResolvedInspectOptions => ({
   lint: inputOptions.lint ?? userConfig?.lint ?? true,
+  deadCode: inputOptions.deadCode ?? userConfig?.deadCode ?? true,
   verbose: inputOptions.verbose ?? userConfig?.verbose ?? false,
   scoreOnly: inputOptions.scoreOnly ?? false,
   offline: inputOptions.offline ?? false,
@@ -141,6 +144,14 @@ const runInspect = async (
   let lintFailureReason: string | null = null;
   const lintPartialFailures: string[] = [];
 
+  let didDeadCodeFail = false;
+  let deadCodeFailureReason: string | null = null;
+
+  // Dead-code reachability is a whole-project property — skip in
+  // diff / staged mode, matching how `checkReducedMotion` is gated
+  // in `combineDiagnostics`.
+  const shouldRunDeadCode = options.deadCode && !isDiffMode;
+
   const resolvedNodeBinaryPath = await resolveOxlintNode(
     options.lint,
     options.scoreOnly || options.silent,
@@ -149,6 +160,19 @@ const runInspect = async (
     didLintFail = true;
     lintFailureReason = `oxlint native binding not found for Node ${process.version}; expected one matching ${OXLINT_NODE_REQUIREMENT}`;
   }
+
+  // Kick off dead-code analysis in parallel with lint, but defer its
+  // spinner until the lint spinner finalizes — each `spinner()` call
+  // returns its own ora instance, so two concurrent starts would have
+  // both frame loops writing to stderr and produce garbled output.
+  const deadCodeWork = shouldRunDeadCode
+    ? checkDeadCode({ rootDirectory: directory, userConfig })
+    : Promise.resolve<Diagnostic[]>([]);
+  // HACK: attach a no-op handler synchronously so a rejection during
+  // the lint await window doesn't trigger Node's unhandled-rejection
+  // warning. The deferred await below routes the real error into the
+  // spinner + skippedChecks tracking.
+  deadCodeWork.catch(() => {});
 
   const lintPromise = resolvedNodeBinaryPath
     ? (async () => {
@@ -179,9 +203,7 @@ const runInspect = async (
               lintSpinner?.fail(
                 `Lint checks failed — oxlint native binding not found (Node ${process.version}).`,
               );
-              logger.dim(
-                `  Upgrade to Node ${OXLINT_NODE_REQUIREMENT} and rerun itall-react-doctor.`,
-              );
+              logger.dim(`  Upgrade to Node ${OXLINT_NODE_REQUIREMENT} and rerun react-doctor.`);
             } else {
               lintSpinner?.fail("Lint checks failed (non-fatal, skipping).");
               logger.error(lintErrorChain);
@@ -193,18 +215,39 @@ const runInspect = async (
     : Promise.resolve<Diagnostic[]>([]);
 
   const lintDiagnostics = await lintPromise;
+
+  const deadCodeDiagnostics = shouldRunDeadCode
+    ? await (async () => {
+        const deadCodeSpinner = options.scoreOnly
+          ? null
+          : spinner("Analyzing dead code...").start();
+        try {
+          const result = await deadCodeWork;
+          deadCodeSpinner?.succeed("Analyzing dead code.");
+          return result;
+        } catch (error) {
+          didDeadCodeFail = true;
+          deadCodeFailureReason = formatErrorChain(error);
+          deadCodeSpinner?.fail("Dead-code analysis failed (non-fatal, skipping).");
+          return [];
+        }
+      })()
+    : [];
+
   const diagnostics = combineDiagnostics({
     lintDiagnostics,
     directory,
     isDiffMode,
     userConfig,
     respectInlineDisables: options.respectInlineDisables,
+    extraDiagnostics: deadCodeDiagnostics,
   });
 
   const elapsedMilliseconds = performance.now() - startTime;
 
   const skippedChecks: string[] = [];
   if (didLintFail) skippedChecks.push("lint");
+  if (didDeadCodeFail) skippedChecks.push("dead-code");
   const hasSkippedChecks = skippedChecks.length > 0;
 
   // itall fork: 점수는 로컬에서 산출되며 외부 API 호출은 없다.
@@ -227,6 +270,9 @@ const runInspect = async (
     // batch) but some batches timed out — surface the partial-failure
     // notes so JSON consumers see why a few files weren't checked.
     skippedCheckReasons["lint:partial"] = lintPartialFailures.join("; ");
+  }
+  if (didDeadCodeFail && deadCodeFailureReason !== null) {
+    skippedCheckReasons["dead-code"] = deadCodeFailureReason;
   }
 
   const buildResult = (): InspectResult => ({

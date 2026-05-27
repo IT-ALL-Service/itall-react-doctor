@@ -1,6 +1,6 @@
 {
   "name": "@it-all-service/react-doctor",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "Diagnose and fix React codebases for security, performance, correctness, accessibility, bundle-size, and architecture issues — itall fork of millionco/react-doctor with team-specific rules",
   "keywords": [
     "accessibility",
@@ -28,7 +28,6 @@
     "directory": "packages/react-doctor"
   },
   "bin": {
-    "itall-react-doctor": "./bin/react-doctor.js",
     "react-doctor": "./bin/react-doctor.js"
   },
   "files": [
@@ -62,6 +61,7 @@
   "dependencies": {
     "agent-install": "0.0.5",
     "commander": "^14.0.3",
+    "deslop-js": "^0.0.9",
     "ora": "^9.4.0",
     "oxlint": "^1.63.0",
     "oxlint-plugin-react-doctor": "workspace:*",
