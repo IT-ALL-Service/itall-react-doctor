@@ -17,12 +17,12 @@ const printCountsSummaryLine = (
 
   const issueCountColor =
     errorCount > 0 ? highlighter.error : warningCount > 0 ? highlighter.warn : highlighter.dim;
-  const issueCountText = `${totalIssueCount} ${totalIssueCount === 1 ? "issue" : "issues"}`;
+  const issueCountText = `${totalIssueCount}건`;
   const fileCountText =
     totalSourceFileCount > 0
-      ? `across ${affectedFileCount}/${totalSourceFileCount} files`
-      : `across ${affectedFileCount} file${affectedFileCount === 1 ? "" : "s"}`;
-  const elapsedTimeText = `in ${elapsedTimeLabel}`;
+      ? `${affectedFileCount}/${totalSourceFileCount}개 파일`
+      : `${affectedFileCount}개 파일`;
+  const elapsedTimeText = `${elapsedTimeLabel} 소요`;
 
   logger.log(
     `  ${issueCountColor(issueCountText)} ${highlighter.dim(`${fileCountText}  ${elapsedTimeText}`)}`,
@@ -48,7 +48,7 @@ export const printSummary = (
 
   try {
     const diagnosticsDirectory = writeDiagnosticsDirectory(diagnostics);
-    logger.log(highlighter.gray(`  Full diagnostics written to ${diagnosticsDirectory}`));
+    logger.log(highlighter.gray(`  전체 진단 결과 저장 위치: ${diagnosticsDirectory}`));
   } catch {
     /* swallow — failing to write the dump shouldn't block the summary */
   }

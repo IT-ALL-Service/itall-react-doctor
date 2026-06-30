@@ -260,7 +260,7 @@ const runInspect = async (
   const scoreResult: ScoreResult | null = didLintFail
     ? null
     : calculateScore(scoreDiagnostics, { checkedFileCount: lintSourceFileCount });
-  const noScoreMessage = "Score unavailable — lint check failed.";
+  const noScoreMessage = "점수를 계산할 수 없습니다 — lint 검사 실패.";
 
   const skippedCheckReasons: Record<string, string> = {};
   if (didLintFail && lintFailureReason !== null) {
@@ -310,21 +310,19 @@ const runInspect = async (
 
   if (surfaceDiagnostics.length === 0) {
     if (hasSkippedChecks) {
-      const skippedLabel = skippedChecks.join(" and ");
-      logger.warn(
-        `No issues detected, but ${skippedLabel} checks failed — results are incomplete.`,
-      );
+      const skippedLabel = skippedChecks.join(", ");
+      logger.warn(`문제를 찾지 못했지만 ${skippedLabel} 검사가 실패해 결과가 불완전합니다.`);
     } else if (demotedDiagnosticCount > 0) {
       logger.success(
-        `No issues found! (${demotedDiagnosticCount} demoted from the ${options.outputSurface} surface — see config.surfaces.)`,
+        `문제 없음! (${options.outputSurface} surface에서 ${demotedDiagnosticCount}건 제외됨 — config.surfaces 참고.)`,
       );
     } else {
-      logger.success("No issues found!");
+      logger.success("문제 없음!");
     }
     logger.break();
     if (hasSkippedChecks) {
       printBrandingOnlyHeader();
-      logger.log(highlighter.gray("  Score not shown — some checks could not complete."));
+      logger.log(highlighter.gray("  일부 검사를 완료하지 못해 점수를 표시하지 않습니다."));
     } else if (scoreResult) {
       printScoreHeader(scoreResult);
     } else {
@@ -339,7 +337,7 @@ const runInspect = async (
   if (demotedDiagnosticCount > 0) {
     logger.log(
       highlighter.gray(
-        `  ${demotedDiagnosticCount} demoted from the ${options.outputSurface} surface (e.g. design cleanup) — run locally without PR-comment filtering for the full list.`,
+        `  ${options.outputSurface} surface에서 ${demotedDiagnosticCount}건 제외됨(예: design 정리) — 전체 목록은 PR 코멘트 필터 없이 로컬에서 실행하세요.`,
       ),
     );
     logger.break();
@@ -356,9 +354,9 @@ const runInspect = async (
   );
 
   if (hasSkippedChecks) {
-    const skippedLabel = skippedChecks.join(" and ");
+    const skippedLabel = skippedChecks.join(", ");
     logger.break();
-    logger.warn(`  Note: ${skippedLabel} checks failed — score may be incomplete.`);
+    logger.warn(`  참고: ${skippedLabel} 검사가 실패해 점수가 불완전할 수 있습니다.`);
   }
 
   return buildResult();

@@ -157,7 +157,7 @@ export const Cart = () => {
     });
     const normalizedStdout = stripAnsi(stdout);
 
-    expect(normalizedStdout).toMatch(/State & Effects \d+ issues/);
+    expect(normalizedStdout).toMatch(/상태 & Effect \d+건/);
     expect(normalizedStdout).toContain("  ⚠ Direct state mutation ×2");
     expect(normalizedStdout).toContain("    src/Cart.tsx:");
     expect(normalizedStdout.indexOf("Direct state mutation")).toBeLessThan(
