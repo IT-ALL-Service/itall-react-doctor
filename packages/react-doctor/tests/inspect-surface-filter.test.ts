@@ -86,7 +86,7 @@ describe("inspect — score surface filter", () => {
       });
 
       const printedText = printedLines.join("\n");
-      expect(printedText).toContain(`${baselineDesignCount} demoted from the cli surface`);
+      expect(printedText).toContain(`cli surface에서 ${baselineDesignCount}건 제외됨`);
     } finally {
       consoleSpy.mockRestore();
     }

@@ -48,5 +48,6 @@
       "Bash(pnpm -F @it-all-service/react-doctor build)",
       "Bash(pnpm -F @it-all-service/react-doctor test -- install-skill)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": ["codegraph"]
 }

@@ -50,10 +50,10 @@ const calculateExpectedScore = ({
 };
 
 describe("calculateScore", () => {
-  it("returns PERFECT_SCORE / Healthy when there are no diagnostics", () => {
+  it("returns PERFECT_SCORE / 양호 when there are no diagnostics", () => {
     const result = calculateScore([]);
     expect(result.score).toBe(PERFECT_SCORE);
-    expect(result.label).toBe("Healthy");
+    expect(result.label).toBe("양호");
   });
 
   it("scores a rule by affected file ratio", () => {
@@ -126,10 +126,10 @@ describe("calculateScore", () => {
     const result = calculateScore(diagnostics, { checkedFileCount: 10 });
 
     expect(result.score).toBe(0);
-    expect(result.label).toBe("Critical");
+    expect(result.label).toBe("심각");
   });
 
-  it('labels "Needs attention" between SCORE_OK_THRESHOLD and SCORE_GOOD_THRESHOLD', () => {
+  it('labels "주의 필요" between SCORE_OK_THRESHOLD and SCORE_GOOD_THRESHOLD', () => {
     const diagnostics = [
       buildDiagnostic("error", { filePath: "src/App.tsx", rule: "unsafe-effect" }),
       buildDiagnostic("warning", { filePath: "src/A.tsx", rule: "naming" }),
@@ -142,6 +142,6 @@ describe("calculateScore", () => {
 
     expect(result.score).toBeLessThan(SCORE_GOOD_THRESHOLD);
     expect(result.score).toBeGreaterThanOrEqual(SCORE_OK_THRESHOLD);
-    expect(result.label).toBe("Needs attention");
+    expect(result.label).toBe("주의 필요");
   });
 });

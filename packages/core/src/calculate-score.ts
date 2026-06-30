@@ -125,9 +125,9 @@ const calculateComplianceRates = (
 
 const getScoreLabel = (score: number): string => {
   let label: string;
-  if (score >= SCORE_GOOD_THRESHOLD) label = "Healthy";
-  else if (score >= SCORE_OK_THRESHOLD) label = "Needs attention";
-  else label = "Critical";
+  if (score >= SCORE_GOOD_THRESHOLD) label = "양호";
+  else if (score >= SCORE_OK_THRESHOLD) label = "주의 필요";
+  else label = "심각";
   return label;
 };
 

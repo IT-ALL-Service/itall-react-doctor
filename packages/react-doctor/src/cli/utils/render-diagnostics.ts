@@ -7,6 +7,7 @@ import {
 } from "@react-doctor/core";
 import type { Diagnostic } from "@react-doctor/types";
 import { buildHiddenDiagnosticsSummary } from "./build-hidden-diagnostics-summary.js";
+import { localizeCategory } from "./localize-category.js";
 import { groupBy, highlighter, logger, toRelativePath } from "@react-doctor/core";
 import { indentMultilineText } from "./indent-multiline-text.js";
 import { wrapIndentedText } from "./wrap-indented-text.js";
@@ -55,7 +56,7 @@ const buildVerboseSiteMap = (diagnostics: Diagnostic[]): Map<string, VerboseSite
 
 const formatSiteCountBadge = (count: number): string => (count > 1 ? `×${count}` : "");
 
-const formatIssueCount = (count: number): string => `${count} ${count === 1 ? "issue" : "issues"}`;
+const formatIssueCount = (count: number): string => `${count}건`;
 
 const toRuleTitle = (ruleName: string): string => {
   const readableRuleName = ruleName
@@ -169,7 +170,9 @@ const printDefaultCategoryGroup = (
   rootDirectory: string,
 ): void => {
   const issueCount = formatIssueCount(categoryGroup.diagnostics.length);
-  logger.log(`${highlighter.bold(categoryGroup.category)} ${highlighter.dim(issueCount)}`);
+  logger.log(
+    `${highlighter.bold(localizeCategory(categoryGroup.category))} ${highlighter.dim(issueCount)}`,
+  );
   for (const [ruleKey, ruleDiagnostics] of visibleRuleGroups) {
     printDefaultRuleGroup(ruleKey, ruleDiagnostics, rootDirectory);
   }
@@ -211,7 +214,7 @@ const printHiddenDiagnosticsSummary = (hiddenRuleGroups: [string, Diagnostic[]][
   });
 
   logger.log(`  ${renderedParts.join("  ")}`);
-  grayLine("    Run again with `--verbose` to get all details");
+  grayLine("    전체 내용을 보려면 `--verbose`로 다시 실행하세요");
   logger.break();
 };
 
@@ -278,22 +281,22 @@ export const formatRuleSummary = (ruleKey: string, ruleDiagnostics: Diagnostic[]
   const firstDiagnostic = ruleDiagnostics[0];
 
   const sections = [
-    `Rule: ${ruleKey}`,
-    `Severity: ${firstDiagnostic.severity}`,
-    `Category: ${firstDiagnostic.category}`,
-    `Count: ${ruleDiagnostics.length}`,
+    `룰: ${ruleKey}`,
+    `심각도: ${firstDiagnostic.severity}`,
+    `카테고리: ${localizeCategory(firstDiagnostic.category)}`,
+    `건수: ${ruleDiagnostics.length}`,
     "",
     firstDiagnostic.message,
   ];
 
   if (firstDiagnostic.help) {
-    sections.push("", `Suggestion: ${firstDiagnostic.help}`);
+    sections.push("", `제안: ${firstDiagnostic.help}`);
   }
   if (firstDiagnostic.url) {
-    sections.push("", `Docs: ${firstDiagnostic.url}`);
+    sections.push("", `문서: ${firstDiagnostic.url}`);
   }
 
-  sections.push("", "Files:");
+  sections.push("", "파일:");
   const fileSites = buildVerboseSiteMap(ruleDiagnostics);
   for (const [filePath, sites] of fileSites) {
     if (sites.length > 0) {

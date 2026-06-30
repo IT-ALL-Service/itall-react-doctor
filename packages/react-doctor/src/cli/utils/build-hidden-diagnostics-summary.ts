@@ -24,14 +24,14 @@ export const buildHiddenDiagnosticsSummary = (
     parts.push({
       severity: "error",
       count: errorCount,
-      text: `✗ ${errorCount} more error${errorCount === 1 ? "" : "s"}`,
+      text: `✗ error ${errorCount}건 더`,
     });
   }
   if (warningCount > 0) {
     parts.push({
       severity: "warning",
       count: warningCount,
-      text: `⚠ ${warningCount} more warning${warningCount === 1 ? "" : "s"}`,
+      text: `⚠ warning ${warningCount}건 더`,
     });
   }
   return parts;
